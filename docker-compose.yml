@@ -80,7 +80,10 @@ services:
     networks:
       cluster:
     ports:
-      - "9108:9108"
+      - target: 9108
+        published: 9108
+        protocol: tcp
+        host_ip: 0.0.0.0
 
   prometheus:
     image: prom/prometheus:v2.54.1
@@ -97,7 +100,10 @@ services:
     networks:
       cluster:
     ports:
-      - "9090:9090"
+      - target: 9090
+        published: 9090
+        protocol: tcp
+        host_ip: 0.0.0.0
 
   grafana:
     image: grafana/grafana:11.2.0
@@ -114,7 +120,10 @@ services:
     networks:
       cluster:
     ports:
-      - "3000:3000"
+      - target: 3000
+        published: 3000
+        protocol: tcp
+        host_ip: 0.0.0.0
 
 networks:
   public:
@@ -124,3 +133,4 @@ networks:
 volumes:
   prometheus-data:
   grafana-data:
+
