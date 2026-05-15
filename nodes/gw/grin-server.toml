@@ -15,7 +15,7 @@ run_test_miner = false
 
 [server.p2p_config]
 host = "0.0.0.0"
-port = 13414
+port = 23414
 seeding_type = "DNSSeed"
 
 peers_preferred = ["grin-node-1:13414", "grin-node-2:13414"]

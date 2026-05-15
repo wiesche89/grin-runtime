@@ -16,7 +16,7 @@ services:
         aliases:
           - grin-gw
     ports:
-      - "13414:13414"
+      - "23414:23414"
       - "13413:13413"
 
   grin-node-1:
