@@ -77,6 +77,10 @@ services:
       GRIN_NODES: "grin-gw=http://grin-gw:13413,grin-node-1=http://grin-node-1:13413,grin-node-2=http://grin-node-2:13413"
       GRIN_EXPORTER_POLL_SECS: "10"
       GRIN_EXPORTER_PORT: "9108"
+      GRIN_LOG_FILES: "grin-gw=/nodes/gw/grin-server.log,grin-node-1=/nodes/node-1/grin-server.log,grin-node-2=/nodes/node-2/grin-server.log"
+      GRIN_EXPORTER_LOG_LINES: "80"
+    volumes:
+      - ./nodes:/nodes:ro
     networks:
       cluster:
       public:
