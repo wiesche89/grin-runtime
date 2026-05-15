@@ -7,7 +7,8 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 NODES = {}
-SECRET = os.environ.get("GRIN_API_SECRET", "")
+DEFAULT_SECRET = os.environ.get("GRIN_API_SECRET", "")
+NODE_SECRETS = {}
 POLL_SECS = int(os.environ.get("GRIN_EXPORTER_POLL_SECS", "10"))
 PORT = int(os.environ.get("GRIN_EXPORTER_PORT", "9108"))
 
@@ -39,13 +40,28 @@ def parse_nodes():
     return nodes
 
 
-def rpc(url, method, params=None):
+def parse_node_secrets():
+    raw = os.environ.get("GRIN_NODE_SECRETS", "")
+    secrets = {}
+    for item in raw.split(","):
+        if not item.strip():
+            continue
+        name, secret = item.split("=", 1)
+        secrets[name.strip()] = secret.strip()
+    return secrets
+
+
+def rpc(node, url, method, params=None):
     body = json.dumps({"jsonrpc": "2.0", "method": method, "params": params or [], "id": 1}).encode("utf-8")
-    token = base64.b64encode(f"grin:{SECRET}".encode("utf-8")).decode("ascii")
+    secret = NODE_SECRETS.get(node, DEFAULT_SECRET)
+    headers = {"Content-Type": "application/json"}
+    if secret:
+        token = base64.b64encode(f"grin:{secret}".encode("utf-8")).decode("ascii")
+        headers["Authorization"] = f"Basic {token}"
     req = urllib.request.Request(
         f"{url}/v2/owner",
         data=body,
-        headers={"Authorization": f"Basic {token}", "Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=10) as res:
@@ -59,8 +75,8 @@ def rpc(url, method, params=None):
 def collect_once():
     for name, url in NODES.items():
         try:
-            status = rpc(url, "get_status")
-            peers = rpc(url, "get_connected_peers")
+            status = rpc(name, url, "get_status")
+            peers = rpc(name, url, "get_connected_peers")
             LAST[name] = {
                 "ok": 1,
                 "error": "",
@@ -194,6 +210,7 @@ if __name__ == "__main__":
     import threading
 
     NODES = parse_nodes()
+    NODE_SECRETS = parse_node_secrets()
     collect_once()
     threading.Thread(target=loop_collect, daemon=True).start()
     print(f"grin-exporter listening on :{PORT}/metrics for nodes: {', '.join(NODES)}", flush=True)

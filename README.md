@@ -50,14 +50,15 @@ Grafana loads the `Grin Runtime` dashboard automatically.
 
 ## API v2
 
-Owner endpoint for Rust Grin and Grin++:
+Owner endpoint:
 
 ```text
 /v2/owner
-Basic Auth: grin:node-test-owner-secret
+Rust Grin Basic Auth: grin:node-test-owner-secret
+Grin++: no API secret
 ```
 
-Foreign secret is present beside each config as `.foreign_api_secret`.
+Rust Grin foreign secret is present beside each config as `.foreign_api_secret`.
 
 ## Metrics
 

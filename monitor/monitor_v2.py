@@ -41,13 +41,27 @@ def parse_log_files():
     return files
 
 
+def parse_node_secrets():
+    raw = os.environ.get("GRIN_NODE_SECRETS", "")
+    secrets = {}
+    for item in raw.split(","):
+        if not item.strip():
+            continue
+        name, secret = item.split("=", 1)
+        secrets[name.strip()] = secret.strip()
+    return secrets
+
+
 def rpc(url, secret, method, params=None):
     body = json.dumps({"jsonrpc": "2.0", "method": method, "params": params or [], "id": 1}).encode("utf-8")
-    token = base64.b64encode(f"grin:{secret}".encode("utf-8")).decode("ascii")
+    headers = {"Content-Type": "application/json"}
+    if secret:
+        token = base64.b64encode(f"grin:{secret}".encode("utf-8")).decode("ascii")
+        headers["Authorization"] = f"Basic {token}"
     req = urllib.request.Request(
         f"{url}/v2/owner",
         data=body,
-        headers={"Authorization": f"Basic {token}", "Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=10) as res:
@@ -69,7 +83,8 @@ def scan_log(path):
 
 def main():
     nodes = parse_nodes()
-    secret = os.environ["GRIN_API_SECRET"]
+    default_secret = os.environ.get("GRIN_API_SECRET", "")
+    node_secrets = parse_node_secrets()
     poll_secs = int(os.environ.get("GRIN_POLL_SECS", "15"))
     height_lag_warn = int(os.environ.get("GRIN_HEIGHT_LAG_WARN", "2"))
     internal_nodes = {item.strip() for item in os.environ.get("GRIN_INTERNAL_NODES", "").split(",") if item.strip()}
@@ -79,6 +94,7 @@ def main():
         statuses = {}
         for name, url in nodes.items():
             try:
+                secret = node_secrets.get(name, default_secret)
                 status = rpc(url, secret, "get_status")
                 peers = rpc(url, secret, "get_connected_peers")
                 statuses[name] = {
