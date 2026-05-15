@@ -61,6 +61,7 @@ grin_node_height
 grin_node_total_difficulty
 grin_node_connections
 grin_node_sync_status
+grin_status_field_info
 grin_peer_height
 grin_peer_total_difficulty
 ```

@@ -93,6 +93,24 @@ def metric_line(name, labels, value):
     return f"{name}{{{labels_text}}} {value}\n"
 
 
+def flatten_status(value, prefix=""):
+    if isinstance(value, dict):
+        for key in sorted(value):
+            path = f"{prefix}.{key}" if prefix else key
+            yield from flatten_status(value[key], path)
+    elif isinstance(value, list):
+        yield prefix, json.dumps(value, separators=(",", ":"))
+    elif value is not None:
+        yield prefix, value
+
+
+def status_field_lines(node, status):
+    lines = []
+    for path, value in flatten_status(status):
+        lines.append(metric_line("grin_status_field_info", {"node": node, "path": path, "value": value}, 1))
+    return lines
+
+
 def render_metrics():
     out = []
     out.append("# HELP grin_node_up Whether API v2 polling succeeded.\n")
@@ -109,6 +127,8 @@ def render_metrics():
     out.append("# TYPE grin_peer_height gauge\n")
     out.append("# HELP grin_peer_total_difficulty Connected peer total difficulty.\n")
     out.append("# TYPE grin_peer_total_difficulty gauge\n")
+    out.append("# HELP grin_status_field_info Selected raw fields from get_status as label values.\n")
+    out.append("# TYPE grin_status_field_info gauge\n")
 
     for node, data in sorted(LAST.items()):
         out.append(metric_line("grin_node_up", {"node": node, "error": data["error"]}, data["ok"]))
@@ -119,6 +139,7 @@ def render_metrics():
         out.append(metric_line("grin_node_total_difficulty", {"node": node}, tip.get("total_difficulty", 0)))
         out.append(metric_line("grin_node_connections", {"node": node}, status.get("connections", 0)))
         out.append(metric_line("grin_node_sync_status", {"node": node, "sync_status": sync_status}, STATUS_MAP.get(sync_status, -1)))
+        out.extend(status_field_lines(node, status))
         for peer in data.get("peers") or []:
             labels = {
                 "node": node,

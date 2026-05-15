@@ -53,6 +53,14 @@
       "targets": [{ "expr": "grin_node_sync_status", "legendFormat": "{{node}} {{sync_status}}", "refId": "A", "format": "table", "instant": true }],
       "fieldConfig": { "defaults": {}, "overrides": [] },
       "options": { "showHeader": true }
+    },
+    {
+      "type": "table",
+      "title": "get_status Fields",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 25 },
+      "targets": [{ "expr": "grin_status_field_info", "legendFormat": "{{node}} {{path}}", "refId": "A", "format": "table", "instant": true }],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true }
     }
   ],
   "refresh": "10s",
@@ -65,6 +73,6 @@
   "timezone": "browser",
   "title": "Grin Runtime",
   "uid": "grin-runtime",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
