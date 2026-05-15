@@ -79,6 +79,7 @@ services:
       GRIN_EXPORTER_PORT: "9108"
     networks:
       cluster:
+      public:
     ports:
       - target: 9108
         published: 9108
@@ -99,6 +100,7 @@ services:
       - prometheus-data:/prometheus
     networks:
       cluster:
+      public:
     ports:
       - target: 9090
         published: 9090
@@ -119,6 +121,7 @@ services:
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     networks:
       cluster:
+      public:
     ports:
       - target: 3000
         published: 3000
@@ -133,4 +136,6 @@ networks:
 volumes:
   prometheus-data:
   grafana-data:
+
+
 
