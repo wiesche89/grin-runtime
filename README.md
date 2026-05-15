@@ -71,13 +71,9 @@ grin_node_connections
 grin_node_sync_status
 grin_status_field_info
 grin_peer_field_info
-grin_node_log_info
 grin_peer_height
 grin_peer_total_difficulty
 ```
-
-`grin_node_log_info` intentionally exports only the latest bounded log lines. For full log search use Docker logs
-or mount a dedicated log system such as Loki.
 
 ## Logs / Warnings
 

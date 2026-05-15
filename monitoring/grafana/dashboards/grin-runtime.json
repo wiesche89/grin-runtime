@@ -69,14 +69,6 @@
       "targets": [{ "expr": "grin_peer_field_info", "legendFormat": "{{node}} {{peer}} {{path}}", "refId": "A", "format": "table", "instant": true }],
       "fieldConfig": { "defaults": {}, "overrides": [] },
       "options": { "showHeader": true }
-    },
-    {
-      "type": "table",
-      "title": "Recent Node Logs",
-      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 45 },
-      "targets": [{ "expr": "grin_node_log_info", "legendFormat": "{{node}}", "refId": "A", "format": "table", "instant": true }],
-      "fieldConfig": { "defaults": {}, "overrides": [] },
-      "options": { "showHeader": true }
     }
   ],
   "refresh": "10s",
@@ -89,6 +81,6 @@
   "timezone": "browser",
   "title": "Grin Runtime",
   "uid": "grin-runtime",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }

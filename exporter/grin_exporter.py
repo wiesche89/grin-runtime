@@ -10,8 +10,6 @@ NODES = {}
 SECRET = os.environ.get("GRIN_API_SECRET", "")
 POLL_SECS = int(os.environ.get("GRIN_EXPORTER_POLL_SECS", "10"))
 PORT = int(os.environ.get("GRIN_EXPORTER_PORT", "9108"))
-LOG_FILES = {}
-LOG_LINES = int(os.environ.get("GRIN_EXPORTER_LOG_LINES", "80"))
 
 STATUS_MAP = {
     "no_sync": 0,
@@ -39,17 +37,6 @@ def parse_nodes():
         name, url = item.split("=", 1)
         nodes[name.strip()] = url.strip().rstrip("/")
     return nodes
-
-
-def parse_log_files():
-    raw = os.environ.get("GRIN_LOG_FILES", "")
-    files = {}
-    for item in raw.split(","):
-        if not item.strip():
-            continue
-        name, path = item.split("=", 1)
-        files[name.strip()] = path.strip()
-    return files
 
 
 def rpc(url, method, params=None):
@@ -142,27 +129,6 @@ def peer_field_lines(node, peers):
     return lines
 
 
-def tail_lines(path, limit):
-    try:
-        with open(path, "rb") as file:
-            file.seek(0, os.SEEK_END)
-            size = file.tell()
-            read_size = min(size, 128 * 1024)
-            file.seek(size - read_size)
-            data = file.read().decode("utf-8", errors="replace")
-    except OSError as err:
-        return [f"log unavailable: {err}"]
-    return data.splitlines()[-limit:]
-
-
-def log_lines():
-    lines = []
-    for node, path in sorted(LOG_FILES.items()):
-        for index, line in enumerate(tail_lines(path, LOG_LINES)):
-            lines.append(metric_line("grin_node_log_info", {"node": node, "line": line, "index": index}, 1))
-    return lines
-
-
 def render_metrics():
     out = []
     out.append("# HELP grin_node_up Whether API v2 polling succeeded.\n")
@@ -183,8 +149,6 @@ def render_metrics():
     out.append("# TYPE grin_status_field_info gauge\n")
     out.append("# HELP grin_peer_field_info Raw fields from get_connected_peers as label values.\n")
     out.append("# TYPE grin_peer_field_info gauge\n")
-    out.append("# HELP grin_node_log_info Recent bounded node log lines as label values.\n")
-    out.append("# TYPE grin_node_log_info gauge\n")
 
     for node, data in sorted(LAST.items()):
         out.append(metric_line("grin_node_up", {"node": node, "error": data["error"]}, data["ok"]))
@@ -206,7 +170,6 @@ def render_metrics():
             }
             out.append(metric_line("grin_peer_height", labels, peer.get("height", 0)))
             out.append(metric_line("grin_peer_total_difficulty", labels, peer.get("total_difficulty", 0)))
-    out.extend(log_lines())
     return "".join(out).encode("utf-8")
 
 
@@ -231,7 +194,6 @@ if __name__ == "__main__":
     import threading
 
     NODES = parse_nodes()
-    LOG_FILES = parse_log_files()
     collect_once()
     threading.Thread(target=loop_collect, daemon=True).start()
     print(f"grin-exporter listening on :{PORT}/metrics for nodes: {', '.join(NODES)}", flush=True)
