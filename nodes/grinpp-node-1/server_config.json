@@ -1,18 +1,18 @@
 {
   "P2P": {
     "ALLOWED_PEERS": [
-      "grin-gw",
-      "grin-node-1",
-      "grin-node-2"
+      "172.30.0.2",
+      "172.30.0.3",
+      "172.30.0.4"
     ],
     "LISTEN_PORT": 13414,
     "MAX_PEERS": 16,
     "MIN_PEERS": 2,
     "P2P_PORT": 13414,
     "PREFERRED_PEERS": [
-      "grin-gw:23414",
-      "grin-node-1:13414",
-      "grin-node-2:13414"
+      "172.30.0.2:23414",
+      "172.30.0.3:13414",
+      "172.30.0.4:13414"
     ]
   },
   "SERVER": {

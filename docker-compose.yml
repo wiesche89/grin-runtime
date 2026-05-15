@@ -13,6 +13,7 @@ services:
     networks:
       public:
       cluster:
+        ipv4_address: 172.30.0.2
         aliases:
           - grin-gw
     ports:
@@ -28,6 +29,7 @@ services:
       - ./nodes/node-1:/root/.grin/test
     networks:
       cluster:
+        ipv4_address: 172.30.0.3
         aliases:
           - grin-node-1
 
@@ -40,6 +42,7 @@ services:
       - ./nodes/node-2:/root/.grin/test
     networks:
       cluster:
+        ipv4_address: 172.30.0.4
         aliases:
           - grin-node-2
 
@@ -58,6 +61,7 @@ services:
       - ./nodes/grinpp-node-1:/root/.GrinPP
     networks:
       cluster:
+        ipv4_address: 172.30.0.5
         aliases:
           - grinpp-node-1
 
@@ -155,6 +159,9 @@ networks:
   public:
   cluster:
     internal: true
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
 
 volumes:
   prometheus-data:
