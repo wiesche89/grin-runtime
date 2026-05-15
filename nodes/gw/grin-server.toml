@@ -20,8 +20,8 @@ seeding_type = "DNSSeed"
 
 peers_preferred = ["grin-node-1:13414", "grin-node-2:13414"]
 peer_max_inbound_count = 32
-peer_max_outbound_count = 8
-peer_min_preferred_outbound_count = 2
+peer_max_outbound_count = 12
+peer_min_preferred_outbound_count = 8
 
 [server.pool_config]
 accept_fee_base = 500000
@@ -58,3 +58,4 @@ log_file_path = "/root/.grin/test/grin-server.log"
 log_file_append = true
 log_max_size = 16777216
 log_max_files = 8
+
