@@ -1,0 +1,10 @@
+{
+  "P2P": {
+    "MAX_PEERS": 16,
+    "MIN_PEERS": 2
+  },
+  "WALLET": {
+    "DATABASE": "SQLITE",
+    "MIN_CONFIRMATIONS": 10
+  }
+}

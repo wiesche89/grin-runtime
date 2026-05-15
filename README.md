@@ -6,6 +6,7 @@ Separate Docker integration test project for the Grin staging branch.
 
 - `grin-gw`: public + internal Docker network, can reach external peers.
 - `grin-node-1`, `grin-node-2`: internal Docker network only.
+- `grinpp-node-1`: Grin++ floonet node built from `wiesche89/grinplusplus` `master`, internal Docker network only.
 - `monitor`: polls API v2 owner JSON-RPC and scans mounted logs.
 - `grin-exporter`: exposes Prometheus metrics from API v2.
 - `prometheus`: scrapes `grin-exporter`.
@@ -23,10 +24,17 @@ By default the Grin image is built from:
 https://github.com/wiesche89/grin.git branch staging
 ```
 
+The Grin++ image is built from:
+
+```text
+https://github.com/wiesche89/grinplusplus.git branch master
+```
+
 Override when needed:
 
 ```bash
 GRIN_REPO=https://github.com/wiesche89/grin.git GRIN_BRANCH=staging docker compose up --build
+GRINPP_REPO=https://github.com/wiesche89/grinplusplus.git GRINPP_REF=master docker compose up --build
 ```
 
 ## UI
@@ -42,7 +50,7 @@ Grafana loads the `Grin Runtime` dashboard automatically.
 
 ## API v2
 
-Owner endpoint:
+Owner endpoint for Rust Grin and Grin++:
 
 ```text
 /v2/owner
@@ -88,7 +96,7 @@ PIHD/PIBD fallback or abort
 
 ```bash
 docker compose down
-sudo rm -rf nodes/gw/chain_data nodes/node-1/chain_data nodes/node-2/chain_data
+sudo rm -rf nodes/gw/chain_data nodes/node-1/chain_data nodes/node-2/chain_data nodes/grinpp-node-1/FLOONET/NODE
 ```
 
 To also reset Prometheus and Grafana state:

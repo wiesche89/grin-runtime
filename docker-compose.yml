@@ -43,18 +43,38 @@ services:
         aliases:
           - grin-node-2
 
+  grinpp-node-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.grinpp
+      args:
+        GRINPP_REPO: ${GRINPP_REPO:-https://github.com/wiesche89/grinplusplus.git}
+        GRINPP_REF: ${GRINPP_REF:-master}
+    image: grin-runtime-grinpp:master
+    depends_on:
+      - grin-gw
+    command: ["--public-node-api", "--floonet"]
+    volumes:
+      - ./nodes/grinpp-node-1:/root/.GrinPP
+    networks:
+      cluster:
+        aliases:
+          - grinpp-node-1
+
   monitor:
     image: python:3.12-alpine
     depends_on:
       - grin-gw
       - grin-node-1
       - grin-node-2
+      - grinpp-node-1
     working_dir: /monitor
     command: ["python", "monitor_v2.py"]
     environment:
       GRIN_API_SECRET: "node-test-owner-secret"
-      GRIN_NODES: "grin-gw=http://grin-gw:13413,grin-node-1=http://grin-node-1:13413,grin-node-2=http://grin-node-2:13413"
-      GRIN_INTERNAL_NODES: "grin-node-1,grin-node-2"
+      GRIN_NODES: "grin-gw=http://grin-gw:13413,grin-node-1=http://grin-node-1:13413,grin-node-2=http://grin-node-2:13413,grinpp-node-1=http://grinpp-node-1:13413"
+      GRIN_INTERNAL_NODES: "grin-node-1,grin-node-2,grinpp-node-1"
+      GRIN_LOG_FILES: "grin-gw=/nodes/gw/grin-server.log,grin-node-1=/nodes/node-1/grin-server.log,grin-node-2=/nodes/node-2/grin-server.log,grinpp-node-1=/nodes/grinpp-node-1/FLOONET/LOGS/Node.log"
       GRIN_HEIGHT_LAG_WARN: "2"
       GRIN_POLL_SECS: "15"
     volumes:
@@ -72,12 +92,13 @@ services:
       - grin-gw
       - grin-node-1
       - grin-node-2
+      - grinpp-node-1
     environment:
       GRIN_API_SECRET: "node-test-owner-secret"
-      GRIN_NODES: "grin-gw=http://grin-gw:13413,grin-node-1=http://grin-node-1:13413,grin-node-2=http://grin-node-2:13413"
+      GRIN_NODES: "grin-gw=http://grin-gw:13413,grin-node-1=http://grin-node-1:13413,grin-node-2=http://grin-node-2:13413,grinpp-node-1=http://grinpp-node-1:13413"
       GRIN_EXPORTER_POLL_SECS: "10"
       GRIN_EXPORTER_PORT: "9108"
-      GRIN_LOG_FILES: "grin-gw=/nodes/gw/grin-server.log,grin-node-1=/nodes/node-1/grin-server.log,grin-node-2=/nodes/node-2/grin-server.log"
+      GRIN_LOG_FILES: "grin-gw=/nodes/gw/grin-server.log,grin-node-1=/nodes/node-1/grin-server.log,grin-node-2=/nodes/node-2/grin-server.log,grinpp-node-1=/nodes/grinpp-node-1/FLOONET/LOGS/Node.log"
       GRIN_EXPORTER_LOG_LINES: "80"
     volumes:
       - ./nodes:/nodes:ro

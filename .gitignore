@@ -1,4 +1,10 @@
 nodes/*/chain_data/
 nodes/*/grin-server.log
 nodes/*/grin-server.log.*
+nodes/*/FLOONET/LOGS/
+nodes/*/FLOONET/NODE/
+nodes/*/FLOONET/WALLET/
+nodes/*/MAINNET/LOGS/
+nodes/*/MAINNET/NODE/
+nodes/*/MAINNET/WALLET/
 __pycache__/

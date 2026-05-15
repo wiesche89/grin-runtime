@@ -30,6 +30,17 @@ def parse_nodes():
     return nodes
 
 
+def parse_log_files():
+    raw = os.environ.get("GRIN_LOG_FILES", "")
+    files = {}
+    for item in raw.split(","):
+        if not item.strip():
+            continue
+        name, path = item.split("=", 1)
+        files[name.strip()] = path.strip()
+    return files
+
+
 def rpc(url, secret, method, params=None):
     body = json.dumps({"jsonrpc": "2.0", "method": method, "params": params or [], "id": 1}).encode("utf-8")
     token = base64.b64encode(f"grin:{secret}".encode("utf-8")).decode("ascii")
@@ -47,9 +58,7 @@ def rpc(url, secret, method, params=None):
     return result.get("Ok")
 
 
-def scan_log(name):
-    path_name = "gw" if name == "grin-gw" else name.replace("grin-", "")
-    path = f"/nodes/{path_name}/grin-server.log"
+def scan_log(path):
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as log_file:
             lines = log_file.readlines()[-500:]
@@ -64,6 +73,7 @@ def main():
     poll_secs = int(os.environ.get("GRIN_POLL_SECS", "15"))
     height_lag_warn = int(os.environ.get("GRIN_HEIGHT_LAG_WARN", "2"))
     internal_nodes = {item.strip() for item in os.environ.get("GRIN_INTERNAL_NODES", "").split(",") if item.strip()}
+    log_files = parse_log_files()
 
     while True:
         statuses = {}
@@ -90,7 +100,7 @@ def main():
                 print(msg, flush=True)
                 if name in internal_nodes and status["connections"] == 0:
                     print(f"[WARN] {name}: internal node has no peers", flush=True)
-                bad_lines = scan_log(name)
+                bad_lines = scan_log(log_files.get(name, ""))
                 if bad_lines:
                     print(f"[WARN] {name}: suspicious log lines:", flush=True)
                     for line in bad_lines[-10:]:
