@@ -4,7 +4,7 @@ ARG GRINPP_REPO=https://github.com/wiesche89/grinplusplus.git
 ARG GRINPP_REF=master
 ARG VCPKG_REF=2024.09.30
 
-FROM ubuntu:24.04 AS builder-grinpp-amd64
+FROM ubuntu:24.04 AS builder
 
 ARG GRINPP_REPO
 ARG GRINPP_REF
@@ -105,7 +105,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates libstdc++6 libgcc-s1 \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder-grinpp-amd64 /out/grinpp /usr/local/bin/grinpp
+COPY --from=builder /out/grinpp /usr/local/bin/grinpp
 
 WORKDIR /root/.GrinPP
 ENTRYPOINT ["grinpp"]
