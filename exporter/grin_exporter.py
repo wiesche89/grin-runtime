@@ -145,6 +145,10 @@ def peer_field_lines(node, peers):
     return lines
 
 
+def connection_count(status, peers):
+    return max(int(status.get("connections", 0) or 0), len(peers or []))
+
+
 def render_metrics():
     out = []
     out.append("# HELP grin_node_up Whether API v2 polling succeeded.\n")
@@ -169,15 +173,16 @@ def render_metrics():
     for node, data in sorted(LAST.items()):
         out.append(metric_line("grin_node_up", {"node": node, "error": data["error"]}, data["ok"]))
         status = data.get("status") or {}
+        peers = data.get("peers") or []
         tip = status.get("tip") or {}
         sync_status = status.get("sync_status", "unknown")
         out.append(metric_line("grin_node_height", {"node": node}, tip.get("height", 0)))
         out.append(metric_line("grin_node_total_difficulty", {"node": node}, tip.get("total_difficulty", 0)))
-        out.append(metric_line("grin_node_connections", {"node": node}, status.get("connections", 0)))
+        out.append(metric_line("grin_node_connections", {"node": node}, connection_count(status, peers)))
         out.append(metric_line("grin_node_sync_status", {"node": node, "sync_status": sync_status}, STATUS_MAP.get(sync_status, -1)))
         out.extend(status_field_lines(node, status))
-        out.extend(peer_field_lines(node, data.get("peers") or []))
-        for peer in data.get("peers") or []:
+        out.extend(peer_field_lines(node, peers))
+        for peer in peers:
             labels = {
                 "node": node,
                 "peer": peer.get("addr", "unknown"),

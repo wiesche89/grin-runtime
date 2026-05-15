@@ -81,6 +81,10 @@ def scan_log(path):
     return [line.strip() for line in lines if any(pattern in line for pattern in BAD_LOG_PATTERNS)]
 
 
+def connection_count(status, peers):
+    return max(int(status.get("connections", 0) or 0), len(peers or []))
+
+
 def main():
     nodes = parse_nodes()
     default_secret = os.environ.get("GRIN_API_SECRET", "")
@@ -100,7 +104,7 @@ def main():
                 statuses[name] = {
                     "height": status["tip"]["height"],
                     "sync_status": status["sync_status"],
-                    "connections": int(status["connections"]),
+                    "connections": connection_count(status, peers),
                     "peers": peers,
                 }
             except (urllib.error.URLError, TimeoutError, RuntimeError, KeyError) as err:
