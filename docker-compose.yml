@@ -1,0 +1,126 @@
+services:
+  grin-gw:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GRIN_REPO: ${GRIN_REPO:-https://github.com/wiesche89/grin.git}
+        GRIN_BRANCH: ${GRIN_BRANCH:-staging}
+    image: grin-runtime:staging
+    command: ["--testnet", "server", "-c", "/root/.grin/test/grin-server.toml", "run"]
+    volumes:
+      - ./nodes/gw:/root/.grin/test
+    networks:
+      public:
+      cluster:
+        aliases:
+          - grin-gw
+    ports:
+      - "13414:13414"
+      - "13413:13413"
+
+  grin-node-1:
+    image: grin-runtime:staging
+    depends_on:
+      - grin-gw
+    command: ["--testnet", "server", "-c", "/root/.grin/test/grin-server.toml", "run"]
+    volumes:
+      - ./nodes/node-1:/root/.grin/test
+    networks:
+      cluster:
+        aliases:
+          - grin-node-1
+
+  grin-node-2:
+    image: grin-runtime:staging
+    depends_on:
+      - grin-gw
+    command: ["--testnet", "server", "-c", "/root/.grin/test/grin-server.toml", "run"]
+    volumes:
+      - ./nodes/node-2:/root/.grin/test
+    networks:
+      cluster:
+        aliases:
+          - grin-node-2
+
+  monitor:
+    image: python:3.12-alpine
+    depends_on:
+      - grin-gw
+      - grin-node-1
+      - grin-node-2
+    working_dir: /monitor
+    command: ["python", "monitor_v2.py"]
+    environment:
+      GRIN_API_SECRET: "node-test-owner-secret"
+      GRIN_NODES: "grin-gw=http://grin-gw:13413,grin-node-1=http://grin-node-1:13413,grin-node-2=http://grin-node-2:13413"
+      GRIN_INTERNAL_NODES: "grin-node-1,grin-node-2"
+      GRIN_HEIGHT_LAG_WARN: "2"
+      GRIN_POLL_SECS: "15"
+    volumes:
+      - ./monitor:/monitor:ro
+      - ./nodes:/nodes:ro
+    networks:
+      cluster:
+
+  grin-exporter:
+    build:
+      context: ./exporter
+      dockerfile: Dockerfile
+    image: grin-runtime-exporter:local
+    depends_on:
+      - grin-gw
+      - grin-node-1
+      - grin-node-2
+    environment:
+      GRIN_API_SECRET: "node-test-owner-secret"
+      GRIN_NODES: "grin-gw=http://grin-gw:13413,grin-node-1=http://grin-node-1:13413,grin-node-2=http://grin-node-2:13413"
+      GRIN_EXPORTER_POLL_SECS: "10"
+      GRIN_EXPORTER_PORT: "9108"
+    networks:
+      cluster:
+    ports:
+      - "9108:9108"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    depends_on:
+      - grin-exporter
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      cluster:
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      cluster:
+    ports:
+      - "3000:3000"
+
+networks:
+  public:
+  cluster:
+    internal: true
+
+volumes:
+  prometheus-data:
+  grafana-data:

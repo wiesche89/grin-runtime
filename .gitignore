@@ -1,0 +1,4 @@
+nodes/*/chain_data/
+nodes/*/grin-server.log
+nodes/*/grin-server.log.*
+__pycache__/

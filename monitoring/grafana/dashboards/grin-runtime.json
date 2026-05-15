@@ -1,0 +1,70 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Node Heights",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [{ "expr": "grin_node_height", "legendFormat": "{{node}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "area", "justifyMode": "auto" }
+    },
+    {
+      "type": "stat",
+      "title": "Connections",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "targets": [{ "expr": "grin_node_connections", "legendFormat": "{{node}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "area", "justifyMode": "auto" }
+    },
+    {
+      "type": "stat",
+      "title": "API Up",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "targets": [{ "expr": "grin_node_up", "legendFormat": "{{node}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "none", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none", "justifyMode": "auto" }
+    },
+    {
+      "type": "timeseries",
+      "title": "Height Over Time",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 8 },
+      "targets": [{ "expr": "grin_node_height", "legendFormat": "{{node}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Connected Peer Heights",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 8 },
+      "targets": [{ "expr": "grin_peer_height", "legendFormat": "{{node}} -> {{peer}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }
+    },
+    {
+      "type": "table",
+      "title": "Sync Status",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 17 },
+      "targets": [{ "expr": "grin_node_sync_status", "legendFormat": "{{node}} {{sync_status}}", "refId": "A", "format": "table", "instant": true }],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["grin", "node-test"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Grin Runtime",
+  "uid": "grin-runtime",
+  "version": 1,
+  "weekStart": ""
+}

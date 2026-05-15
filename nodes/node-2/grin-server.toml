@@ -1,0 +1,60 @@
+config_file_version = 2
+
+[server]
+db_root = "/root/.grin/test/chain_data"
+api_http_addr = "0.0.0.0:13413"
+api_secret_path = "/root/.grin/test/.api_secret"
+foreign_api_secret_path = "/root/.grin/test/.foreign_api_secret"
+chain_type = "Testnet"
+future_time_limit = 300
+chain_validation_mode = "Disabled"
+archive_mode = false
+skip_sync_wait = false
+run_tui = false
+run_test_miner = false
+
+[server.p2p_config]
+host = "0.0.0.0"
+port = 13414
+seeding_type = "List"
+seeds = ["grin-gw:13414", "grin-node-1:13414"]
+peers_preferred = ["grin-gw:13414", "grin-node-1:13414"]
+peer_max_inbound_count = 32
+peer_max_outbound_count = 8
+peer_min_preferred_outbound_count = 2
+
+[server.pool_config]
+accept_fee_base = 500000
+reorg_cache_period = 30
+max_pool_size = 50000
+max_stempool_size = 50000
+mineable_max_weight = 40000
+
+[server.dandelion_config]
+epoch_secs = 600
+embargo_secs = 180
+aggregation_secs = 30
+stem_probability = 90
+always_stem_our_txs = true
+
+[server.stratum_mining_config]
+enable_stratum_server = false
+stratum_server_addr = "127.0.0.1:13416"
+attempt_time_per_block = 15
+minimum_share_difficulty = 1
+wallet_listener_url = "http://127.0.0.1:13415"
+burn_reward = false
+
+[server.webhook_config]
+nthreads = 4
+timeout = 10
+
+[logging]
+log_to_stdout = true
+stdout_log_level = "Warning"
+log_to_file = true
+file_log_level = "Debug"
+log_file_path = "/root/.grin/test/grin-server.log"
+log_file_append = true
+log_max_size = 16777216
+log_max_files = 8
