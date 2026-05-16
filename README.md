@@ -17,7 +17,7 @@ The platform starts a static gateway node plus the monitoring/control plane. Add
 ## Run
 
 ```bash
-RUNTIME_DOCKER_HOST_ROOT=$PWD docker compose up --build
+./scripts/runtime-compose.sh
 ```
 
 Initial services:
@@ -60,6 +60,20 @@ When the controller runs Docker commands from inside its container, dynamic node
 
 ```bash
 RUNTIME_DOCKER_HOST_ROOT=$PWD docker compose up --build
+```
+
+The helper script sets this automatically:
+
+```bash
+./scripts/runtime-compose.sh up -d --build
+./scripts/runtime-compose.sh down
+./scripts/runtime-compose.sh ps
+```
+
+For a clean runtime reset that preserves `nodes/gw` but removes dynamic workers and controller state:
+
+```bash
+./scripts/runtime-reset.sh
 ```
 
 ## Create Nodes
