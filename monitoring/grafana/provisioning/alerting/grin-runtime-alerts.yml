@@ -5,4 +5,64 @@ groups:
     name: grin-runtime
     folder: Grin
     interval: 1m
-    rules: []
+    rules:
+      - uid: grin-node-unreachable
+        title: Grin node unreachable
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: min by (node_id,node_name) (grin_node_up) == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              reducer: last
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: Grin node API is unreachable
+        labels:
+          severity: warning
+      - uid: grin-peer-count-zero
+        title: Grin peer count zero
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: max by (node_id,node_name) (grin_node_connections) == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              reducer: last
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: Grin node has no connected peers
+        labels:
+          severity: warning

@@ -84,10 +84,29 @@ def init_db() -> None:
               result text,
               error_message text
             );
+            create table if not exists node_observations (
+              id integer primary key autoincrement,
+              node_id text not null,
+              observed_at text not null,
+              api_up integer not null,
+              container_running integer not null,
+              sync_state text,
+              height integer,
+              header_height integer,
+              peer_count integer,
+              cpu_percent real,
+              ram_bytes integer,
+              disk_read_bytes integer,
+              disk_write_bytes integer,
+              network_rx_bytes integer,
+              network_tx_bytes integer,
+              error_message text
+            );
             create table if not exists experiments (
               experiment_id text primary key,
               experiment_name text not null,
               description text,
+              node_profiles_json text not null default '[]',
               labels_json text not null default '{}',
               created_at text not null,
               started_at text,
@@ -103,7 +122,14 @@ def init_db() -> None:
             );
             """
         )
+        ensure_column(conn, "experiments", "node_profiles_json", "text not null default '[]'")
         ensure_gateway(conn)
+
+
+def ensure_column(conn: sqlite3.Connection, table: str, column: str, ddl: str) -> None:
+    columns = {row["name"] for row in conn.execute(f"pragma table_info({table})")}
+    if column not in columns:
+        conn.execute(f"alter table {table} add column {column} {ddl}")
 
 
 def ensure_gateway(conn: sqlite3.Connection) -> None:
@@ -185,19 +211,149 @@ def list_benchmarks() -> list[dict[str, Any]]:
         return [dict(row) for row in conn.execute("select * from benchmark_runs order by id desc limit 500")]
 
 
+def insert_observation(node_id: str, data: dict[str, Any]) -> None:
+    columns = [
+        "node_id", "observed_at", "api_up", "container_running", "sync_state", "height", "header_height",
+        "peer_count", "cpu_percent", "ram_bytes", "disk_read_bytes", "disk_write_bytes",
+        "network_rx_bytes", "network_tx_bytes", "error_message",
+    ]
+    payload = {"node_id": node_id, "observed_at": utcnow_iso(), **data}
+    with connect() as conn:
+        conn.execute(
+            f"insert into node_observations ({', '.join(columns)}) values ({', '.join('?' for _ in columns)})",
+            [payload.get(column) for column in columns],
+        )
+
+
+def latest_observation(node_id: str) -> dict[str, Any] | None:
+    with connect() as conn:
+        return row_to_dict(
+            conn.execute(
+                "select * from node_observations where node_id = ? order by id desc limit 1",
+                (node_id,),
+            ).fetchone()
+        )
+
+
+def recent_observations(node_id: str, limit: int = 12) -> list[dict[str, Any]]:
+    with connect() as conn:
+        return [
+            dict(row)
+            for row in conn.execute(
+                "select * from node_observations where node_id = ? order by id desc limit ?",
+                (node_id, limit),
+            )
+        ]
+
+
+def start_benchmark_run(node: dict[str, Any], sync_run_id: str) -> None:
+    with connect() as conn:
+        exists = conn.execute(
+            "select id from benchmark_runs where node_id = ? and sync_run_id = ?",
+            (node["node_id"], sync_run_id),
+        ).fetchone()
+        if exists:
+            return
+        conn.execute(
+            """
+            insert into benchmark_runs (
+              node_id, node_name, node_type, profile, experiment_id, docker_image, image_tag,
+              git_commit_hash, sync_run_id, sync_started_at, result
+            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                node["node_id"], node["node_name"], node["node_type"], node["profile"], node.get("experiment_id"),
+                node.get("docker_image"), node.get("image_tag"), node.get("git_commit_hash"), sync_run_id,
+                utcnow_iso(), "running",
+            ),
+        )
+
+
+def complete_benchmark_run(node: dict[str, Any], sync_run_id: str, final_height: int | None, result: str = "success", error_message: str | None = None) -> None:
+    with connect() as conn:
+        row = conn.execute(
+            "select sync_started_at from benchmark_runs where node_id = ? and sync_run_id = ?",
+            (node["node_id"], sync_run_id),
+        ).fetchone()
+        completed = utcnow_iso()
+        duration = None
+        if row and row["sync_started_at"]:
+            from datetime import datetime
+
+            started = datetime.fromisoformat(row["sync_started_at"])
+            ended = datetime.fromisoformat(completed)
+            duration = max(0.0, (ended - started).total_seconds())
+        stats = conn.execute(
+            """
+            select avg(peer_count) as average_peer_count, max(cpu_percent) as max_cpu_usage,
+                   max(ram_bytes) as max_ram_usage, max(coalesce(disk_read_bytes, 0) + coalesce(disk_write_bytes, 0)) as max_disk_io
+            from node_observations where node_id = ?
+            """,
+            (node["node_id"],),
+        ).fetchone()
+        conn.execute(
+            """
+            update benchmark_runs
+            set sync_completed_at = ?, total_sync_duration = ?, final_height = ?,
+                average_peer_count = ?, max_cpu_usage = ?, max_ram_usage = ?, max_disk_io = ?,
+                result = ?, error_message = ?
+            where node_id = ? and sync_run_id = ?
+            """,
+            (
+                completed, duration, final_height, stats["average_peer_count"], stats["max_cpu_usage"],
+                stats["max_ram_usage"], stats["max_disk_io"], result, error_message,
+                node["node_id"], sync_run_id,
+            ),
+        )
+
+
 def list_experiments() -> list[dict[str, Any]]:
     with connect() as conn:
         return [dict(row) for row in conn.execute("select * from experiments order by created_at desc")]
 
 
-def insert_experiment(experiment_id: str, name: str, description: str, labels_json: str) -> dict[str, Any]:
+def insert_experiment(experiment_id: str, name: str, description: str, labels_json: str, node_profiles_json: str = "[]") -> dict[str, Any]:
     now = utcnow_iso()
     with connect() as conn:
         conn.execute(
             """
-            insert into experiments (experiment_id, experiment_name, description, labels_json, created_at, status)
-            values (?, ?, ?, ?, ?, ?)
+            insert into experiments (experiment_id, experiment_name, description, node_profiles_json, labels_json, created_at, status)
+            values (?, ?, ?, ?, ?, ?, ?)
             """,
-            (experiment_id, name, description, labels_json, now, "created"),
+            (experiment_id, name, description, node_profiles_json, labels_json, now, "created"),
         )
-    return {"experiment_id": experiment_id, "experiment_name": name, "description": description, "labels_json": labels_json, "created_at": now, "status": "created"}
+    return {
+        "experiment_id": experiment_id,
+        "experiment_name": name,
+        "description": description,
+        "node_profiles_json": node_profiles_json,
+        "labels_json": labels_json,
+        "created_at": now,
+        "status": "created",
+    }
+
+
+def get_experiment(experiment_id: str) -> dict[str, Any] | None:
+    with connect() as conn:
+        return row_to_dict(conn.execute("select * from experiments where experiment_id = ?", (experiment_id,)).fetchone())
+
+
+def update_experiment(experiment_id: str, **fields: Any) -> dict[str, Any]:
+    assignments = ", ".join(f"{key} = ?" for key in fields)
+    with connect() as conn:
+        conn.execute(f"update experiments set {assignments} where experiment_id = ?", [*fields.values(), experiment_id])
+    experiment = get_experiment(experiment_id)
+    if experiment is None:
+        raise KeyError(experiment_id)
+    return experiment
+
+
+def list_nodes_for_experiment(experiment_id: str) -> list[dict[str, Any]]:
+    with connect() as conn:
+        return [
+            row_to_dict(row)
+            for row in conn.execute(
+                "select * from nodes where experiment_id = ? and status != 'deleted' order by node_id",
+                (experiment_id,),
+            )
+        ]

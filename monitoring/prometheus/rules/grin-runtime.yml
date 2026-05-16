@@ -1,0 +1,31 @@
+groups:
+  - name: grin-runtime
+    rules:
+      - alert: GrinNodeUnreachable
+        expr: min by (node_id,node_name) (grin_node_up) == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Grin node API is unreachable
+      - alert: GrinPeerCountZero
+        expr: max by (node_id,node_name) (grin_node_connections) == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Grin node has no connected peers
+      - alert: GrinContainerStopped
+        expr: grin_runtime_node_observation{metric="container_running"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Runtime reports a stopped node container
+      - alert: GrinHighCpu
+        expr: grin_runtime_node_observation{metric="cpu_percent"} > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Node CPU usage is high

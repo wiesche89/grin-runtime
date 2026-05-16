@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import uuid
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -56,7 +58,33 @@ def allocate_ports(node_id: str) -> tuple[int, int, int]:
     return 14000 + offset, 15000 + offset, 16000 + offset
 
 
+def image_metadata(image: str, tag: str) -> dict[str, str | None]:
+    ref = f"{image}:{tag}"
+    try:
+        completed = subprocess.run(
+            ["docker", "image", "inspect", ref, "--format", "{{json .}}"],
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=15,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        return {"image_digest": None, "git_commit_hash": os.environ.get("GRIN_GIT_COMMIT"), "build_date": os.environ.get("GRIN_BUILD_DATE")}
+    import json
+
+    payload = json.loads(completed.stdout)
+    labels = payload.get("Config", {}).get("Labels") or {}
+    repo_digests = payload.get("RepoDigests") or []
+    return {
+        "image_digest": repo_digests[0].split("@", 1)[1] if repo_digests and "@" in repo_digests[0] else payload.get("Id"),
+        "git_commit_hash": labels.get("org.opencontainers.image.revision") or labels.get("git_commit") or os.environ.get("GRIN_GIT_COMMIT"),
+        "build_date": labels.get("org.opencontainers.image.created") or os.environ.get("GRIN_BUILD_DATE"),
+    }
+
+
 def create_node(payload: NodeCreate) -> dict:
+    enforce_resource_limits()
     profile_cfg = config_generator.profile_config(payload.profile)
     node_id, node_name = allocate_identity(payload.node_type)
     api_port, p2p_port, metrics_port = allocate_ports(node_id)
@@ -68,6 +96,7 @@ def create_node(payload: NodeCreate) -> dict:
         node_dir, config_hash = config_generator.generate_rust_config(node_id, payload.profile)
         docker_image = RUST_IMAGE
         image_tag = payload.image_tag or RUST_TAG
+    image_meta = image_metadata(docker_image, image_tag)
     now = utcnow_iso()
     record = {
         "node_id": node_id,
@@ -82,9 +111,9 @@ def create_node(payload: NodeCreate) -> dict:
         "metrics_port": metrics_port,
         "docker_image": docker_image,
         "image_tag": image_tag,
-        "image_digest": None,
-        "git_commit_hash": os.environ.get("GRIN_GIT_COMMIT"),
-        "build_date": os.environ.get("GRIN_BUILD_DATE"),
+        "image_digest": image_meta["image_digest"],
+        "git_commit_hash": image_meta["git_commit_hash"],
+        "build_date": image_meta["build_date"],
         "runtime_config_hash": config_hash,
         "autosync_enabled": profile_cfg["autosync_default"] if payload.autosync_enabled is None else payload.autosync_enabled,
         "sync_state": "created",
@@ -104,6 +133,17 @@ def create_node(payload: NodeCreate) -> dict:
     return storage.get_node(node_id)
 
 
+def enforce_resource_limits() -> None:
+    max_nodes = int(os.environ.get("RUNTIME_MAX_WORKER_NODES", "100"))
+    active_workers = [node for node in storage.list_nodes() if node["node_type"] != "gateway" and node["status"] != "deleted"]
+    if len(active_workers) >= max_nodes:
+        raise HTTPException(status_code=429, detail="worker node limit reached")
+    total, _used, free = __import__("shutil").disk_usage(REPO_ROOT)
+    min_free_gb = float(os.environ.get("RUNTIME_MIN_FREE_DISK_GB", "2"))
+    if free < min_free_gb * 1024 * 1024 * 1024:
+        raise HTTPException(status_code=429, detail="not enough free disk space to create node")
+
+
 def get_required_node(node_id: str) -> dict:
     validate_node_id(node_id)
     node = storage.get_node(node_id)
@@ -121,7 +161,11 @@ def start_node(node_id: str, *, dry_run: bool = False) -> dict:
         service = node["container_name"]
     run_command(compose_args("up", "-d", service), dry_run=dry_run)
     storage.log_action("start", node_id)
-    return storage.update_node(node_id, status="running", last_action="start")
+    sync_run_id = f"sync-{uuid.uuid4().hex[:12]}"
+    updated = storage.update_node(node_id, status="running", sync_state="starting", sync_run_id=sync_run_id, last_action="start")
+    if updated["node_type"] != "gateway":
+        storage.start_benchmark_run(updated, sync_run_id)
+    return updated
 
 
 def stop_node(node_id: str, *, dry_run: bool = False) -> dict:
@@ -152,7 +196,11 @@ def reset_chain(node_id: str, *, dry_run: bool = False) -> dict:
             remove_path(target)
     run_command(compose_args("up", "-d", node["container_name"]), dry_run=dry_run)
     storage.log_action("reset-chain", node_id)
-    return storage.update_node(node_id, status="running", sync_state="reset", last_action="reset-chain")
+    sync_run_id = f"sync-{uuid.uuid4().hex[:12]}"
+    updated = storage.update_node(node_id, status="running", sync_state="reset", sync_run_id=sync_run_id, last_action="reset-chain")
+    if updated["node_type"] != "gateway":
+        storage.start_benchmark_run(updated, sync_run_id)
+    return updated
 
 
 def delete_node(node_id: str, *, remove_files: bool = False, dry_run: bool = False) -> None:

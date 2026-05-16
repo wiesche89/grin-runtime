@@ -67,4 +67,3 @@ class SystemHealth(BaseModel):
     node_count: int
     running_node_count: int
     failures: int
-

@@ -253,6 +253,12 @@ def disable_autosync(node_id: str) -> dict:
     return {"node": autosync_manager.set_autosync(node_id, False), "action": "autosync-disable"}
 
 
+@app.get("/api/nodes/{node_id}/observations")
+def node_observations(node_id: str, limit: int = Query(default=50, ge=1, le=500)) -> list[dict]:
+    validate_node_id(node_id)
+    return storage.recent_observations(node_id, limit)
+
+
 @app.get("/api/system/resources")
 def system_resources() -> dict:
     total, used, free = shutil.disk_usage(os.environ.get("RUNTIME_REPO_ROOT", "."))
@@ -319,6 +325,8 @@ def metrics() -> str:
         "# TYPE grin_runtime_autosync_enabled gauge",
         "# HELP grin_runtime_failure_state Node failure state as labelled info metric.",
         "# TYPE grin_runtime_failure_state gauge",
+        "# HELP grin_runtime_node_observation Latest controller observation values.",
+        "# TYPE grin_runtime_node_observation gauge",
     ]
     lines.append(f"grin_runtime_nodes {len(nodes)}")
     for node in nodes:
@@ -336,6 +344,12 @@ def metrics() -> str:
         )
         lines.append(f"grin_runtime_autosync_enabled{{{labels}}} {1 if node.get('autosync_enabled') else 0}")
         lines.append(f"grin_runtime_failure_state{{{labels}}} 1")
+        observation = storage.latest_observation(node["node_id"])
+        if observation:
+            for key in ("api_up", "container_running", "height", "header_height", "peer_count", "cpu_percent", "ram_bytes", "disk_read_bytes", "disk_write_bytes", "network_rx_bytes", "network_tx_bytes"):
+                value = observation.get(key)
+                if value is not None:
+                    lines.append(f'grin_runtime_node_observation{{{labels},metric="{key}"}} {value}')
     return "\n".join(lines) + "\n"
 
 
@@ -356,9 +370,9 @@ def create_experiment(payload: ExperimentCreate) -> dict:
 
 @app.post("/api/experiments/{experiment_id}/start", dependencies=[Depends(require_write_token)])
 def start_experiment(experiment_id: str) -> dict:
-    return {"experiment_id": experiment_id, "status": "started"}
+    return experiment_manager.start_experiment(experiment_id)
 
 
 @app.post("/api/experiments/{experiment_id}/stop", dependencies=[Depends(require_write_token)])
 def stop_experiment(experiment_id: str) -> dict:
-    return {"experiment_id": experiment_id, "status": "stopped"}
+    return experiment_manager.stop_experiment(experiment_id)
