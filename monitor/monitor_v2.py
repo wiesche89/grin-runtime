@@ -30,6 +30,29 @@ def parse_nodes():
     return nodes
 
 
+def controller_nodes(controller_url):
+    if not controller_url:
+        return {}, {}, set()
+    req = urllib.request.Request(f"{controller_url.rstrip('/')}/api/nodes", method="GET")
+    with urllib.request.urlopen(req, timeout=10) as res:
+        payload = json.loads(res.read().decode("utf-8"))
+    nodes = {}
+    log_files = {}
+    internal = set()
+    for item in payload:
+        if item.get("status") == "deleted":
+            continue
+        name = item["node_name"]
+        nodes[name] = f"http://{item['container_name']}:13413"
+        if item["node_type"] == "grinpp":
+            log_files[name] = f"/nodes/{item['node_id']}/FLOONET/LOGS/Node.log"
+        else:
+            log_files[name] = f"/nodes/{item['node_id']}/grin-server.log"
+        if item["node_type"] != "gateway":
+            internal.add(name)
+    return nodes, log_files, internal
+
+
 def parse_log_files():
     raw = os.environ.get("GRIN_LOG_FILES", "")
     files = {}
@@ -87,6 +110,7 @@ def connection_count(status, peers):
 
 def main():
     nodes = parse_nodes()
+    controller_url = os.environ.get("GRIN_CONTROLLER_URL", "")
     default_secret = os.environ.get("GRIN_API_SECRET", "")
     node_secrets = parse_node_secrets()
     poll_secs = int(os.environ.get("GRIN_POLL_SECS", "15"))
@@ -95,6 +119,14 @@ def main():
     log_files = parse_log_files()
 
     while True:
+        try:
+            dynamic_nodes, dynamic_logs, dynamic_internal = controller_nodes(controller_url)
+            if dynamic_nodes:
+                nodes = dynamic_nodes
+                log_files = dynamic_logs
+                internal_nodes = dynamic_internal
+        except Exception as err:
+            print(f"[WARN] controller discovery failed: {err}", flush=True)
         statuses = {}
         for name, url in nodes.items():
             try:

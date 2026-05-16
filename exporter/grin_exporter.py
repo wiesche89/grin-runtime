@@ -7,10 +7,12 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 NODES = {}
+NODE_META = {}
 DEFAULT_SECRET = os.environ.get("GRIN_API_SECRET", "")
 NODE_SECRETS = {}
 POLL_SECS = int(os.environ.get("GRIN_EXPORTER_POLL_SECS", "10"))
 PORT = int(os.environ.get("GRIN_EXPORTER_PORT", "9108"))
+CONTROLLER_URL = os.environ.get("GRIN_CONTROLLER_URL", "").rstrip("/")
 
 STATUS_MAP = {
     "no_sync": 0,
@@ -38,6 +40,23 @@ def parse_nodes():
         name, url = item.split("=", 1)
         nodes[name.strip()] = url.strip().rstrip("/")
     return nodes
+
+
+def controller_nodes():
+    if not CONTROLLER_URL:
+        return {}, {}
+    req = urllib.request.Request(f"{CONTROLLER_URL}/api/nodes", method="GET")
+    with urllib.request.urlopen(req, timeout=10) as res:
+        payload = json.loads(res.read().decode("utf-8"))
+    nodes = {}
+    meta = {}
+    for item in payload:
+        if item.get("status") == "deleted":
+            continue
+        name = item["node_name"]
+        nodes[name] = f"http://{item['container_name']}:13413"
+        meta[name] = item
+    return nodes, meta
 
 
 def parse_node_secrets():
@@ -73,6 +92,14 @@ def rpc(node, url, method, params=None):
 
 
 def collect_once():
+    global NODES, NODE_META
+    try:
+        dynamic_nodes, dynamic_meta = controller_nodes()
+        if dynamic_nodes:
+            NODES = dynamic_nodes
+            NODE_META = dynamic_meta
+    except Exception as err:
+        print(f"[WARN] controller discovery failed: {err}", flush=True)
     for name, url in NODES.items():
         try:
             status = rpc(name, url, "get_status")
@@ -107,6 +134,22 @@ def esc(value):
 def metric_line(name, labels, value):
     labels_text = ",".join(f'{k}="{esc(v)}"' for k, v in labels.items())
     return f"{name}{{{labels_text}}} {value}\n"
+
+
+def node_labels(node):
+    meta = NODE_META.get(node, {})
+    return {
+        "node": node,
+        "node_id": meta.get("node_id", node),
+        "node_name": meta.get("node_name", node),
+        "node_type": meta.get("node_type", "unknown"),
+        "profile": meta.get("profile", ""),
+        "experiment_id": meta.get("experiment_id") or "",
+        "image_tag": meta.get("image_tag") or "",
+        "commit_hash": meta.get("git_commit_hash") or "",
+        "autosync_enabled": str(bool(meta.get("autosync_enabled", False))).lower(),
+        "failure_state": meta.get("failure_state", "unknown"),
+    }
 
 
 def flatten_status(value, prefix=""):
@@ -171,20 +214,21 @@ def render_metrics():
     out.append("# TYPE grin_peer_field_info gauge\n")
 
     for node, data in sorted(LAST.items()):
-        out.append(metric_line("grin_node_up", {"node": node, "error": data["error"]}, data["ok"]))
+        labels = node_labels(node)
+        out.append(metric_line("grin_node_up", {**labels, "error": data["error"]}, data["ok"]))
         status = data.get("status") or {}
         peers = data.get("peers") or []
         tip = status.get("tip") or {}
         sync_status = status.get("sync_status", "unknown")
-        out.append(metric_line("grin_node_height", {"node": node}, tip.get("height", 0)))
-        out.append(metric_line("grin_node_total_difficulty", {"node": node}, tip.get("total_difficulty", 0)))
-        out.append(metric_line("grin_node_connections", {"node": node}, connection_count(status, peers)))
-        out.append(metric_line("grin_node_sync_status", {"node": node, "sync_status": sync_status}, STATUS_MAP.get(sync_status, -1)))
+        out.append(metric_line("grin_node_height", labels, tip.get("height", 0)))
+        out.append(metric_line("grin_node_total_difficulty", labels, tip.get("total_difficulty", 0)))
+        out.append(metric_line("grin_node_connections", labels, connection_count(status, peers)))
+        out.append(metric_line("grin_node_sync_status", {**labels, "sync_status": sync_status}, STATUS_MAP.get(sync_status, -1)))
         out.extend(status_field_lines(node, status))
         out.extend(peer_field_lines(node, peers))
         for peer in peers:
             labels = {
-                "node": node,
+                **node_labels(node),
                 "peer": peer.get("addr", "unknown"),
                 "direction": peer.get("direction", "unknown"),
                 "user_agent": peer.get("user_agent", "unknown"),
