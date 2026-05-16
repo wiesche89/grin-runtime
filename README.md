@@ -39,6 +39,7 @@ No dynamic worker nodes start until they are created through the controller.
 Grafana:             http://localhost:3000  admin / admin
 Prometheus:          http://localhost:9090
 Runtime Controller:  http://localhost:8080/api/system/health
+Node Control UI:     http://localhost:8080/ui
 Exporter:            http://localhost:9108/metrics
 Gateway v2:          http://localhost:13413/v2/owner
 ```
@@ -50,6 +51,8 @@ X-Runtime-Token: change-me
 ```
 
 Set `RUNTIME_CONTROLLER_TOKEN` before running for real usage.
+
+Grafana provisions a `Grin Node Control` dashboard with an embedded controller UI. Enter the runtime token once in the token field, then use the buttons to add, start, stop, restart, reset, delete and toggle autosync for nodes. The token is stored in browser local storage only.
 
 When the controller runs Docker commands from inside its container, dynamic node bind mounts need the host repository path. If Docker cannot mount generated node directories, start with:
 

@@ -5,7 +5,7 @@ import shutil
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Query
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from . import autosync_manager, benchmark_manager, experiment_manager, node_manager, scheduler, storage
 from .models import ExperimentCreate, NodeActionResult, NodeCreate, NodeRecord, SystemHealth
@@ -21,6 +21,183 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Grin Runtime Controller", version="0.1.0", lifespan=lifespan)
+
+
+@app.get("/", include_in_schema=False)
+def root() -> dict:
+    return {"service": "grin-runtime-controller", "ui": "/ui", "health": "/api/system/health"}
+
+
+@app.get("/ui", response_class=HTMLResponse, include_in_schema=False)
+def control_ui() -> str:
+    return """
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grin Runtime Control</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: #111217; color: #e8eaf0; }
+    main { padding: 16px; }
+    .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+    input, select, button { border: 1px solid #343946; background: #191c24; color: #e8eaf0; border-radius: 4px; padding: 8px 10px; font-size: 13px; }
+    button { cursor: pointer; background: #263247; }
+    button:hover { background: #31405c; }
+    button.danger { background: #4a2026; border-color: #7b2e39; }
+    button.danger:hover { background: #642934; }
+    button.good { background: #1f432e; border-color: #2b7044; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #272b35; padding: 9px 8px; text-align: left; vertical-align: middle; font-size: 13px; }
+    th { color: #aeb7c8; font-weight: 600; }
+    .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .muted { color: #aeb7c8; }
+    .pill { border: 1px solid #343946; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+    #message { min-height: 20px; margin: 8px 0 12px; color: #b7d3ff; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="bar">
+    <input id="token" type="password" placeholder="Runtime token" autocomplete="off">
+    <select id="nodeType">
+      <option value="grin-rust">Grin Rust</option>
+      <option value="grinpp">Grin++</option>
+    </select>
+    <select id="profile">
+      <option value="default">default</option>
+      <option value="pihd-test">pihd-test</option>
+      <option value="pibd-test">pibd-test</option>
+      <option value="benchmark">benchmark</option>
+      <option value="low-memory">low-memory</option>
+      <option value="high-peers">high-peers</option>
+      <option value="archive">archive</option>
+      <option value="pruned">pruned</option>
+      <option value="grinpp-compat">grinpp-compat</option>
+    </select>
+    <button class="good" onclick="createNode()">Add Node</button>
+    <button onclick="loadNodes()">Refresh</button>
+  </div>
+  <div id="message" class="muted"></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Node</th>
+        <th>Type</th>
+        <th>Profile</th>
+        <th>Status</th>
+        <th>Autosync</th>
+        <th>Failure</th>
+        <th>Image</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="nodes"></tbody>
+  </table>
+</main>
+<script>
+const tokenInput = document.getElementById("token");
+tokenInput.value = localStorage.getItem("runtimeToken") || "";
+tokenInput.addEventListener("change", () => localStorage.setItem("runtimeToken", tokenInput.value));
+
+function msg(text, isError=false) {
+  const el = document.getElementById("message");
+  el.textContent = text;
+  el.style.color = isError ? "#ffb3bc" : "#b7d3ff";
+}
+
+async function api(path, options = {}) {
+  const headers = options.headers || {};
+  if (options.method && options.method !== "GET") {
+    headers["X-Runtime-Token"] = tokenInput.value;
+  }
+  if (options.body) {
+    headers["Content-Type"] = "application/json";
+  }
+  const res = await fetch(path, {...options, headers});
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (_) { data = text; }
+  if (!res.ok) {
+    const detail = data && data.detail ? data.detail : text;
+    throw new Error(detail || res.statusText);
+  }
+  return data;
+}
+
+function button(label, action, nodeId, danger=false) {
+  return `<button class="${danger ? "danger" : ""}" onclick="nodeAction('${nodeId}', '${action}')">${label}</button>`;
+}
+
+async function loadNodes() {
+  try {
+    const nodes = await api("/api/nodes");
+    const body = document.getElementById("nodes");
+    body.innerHTML = nodes.map(n => {
+      const autosyncAction = n.autosync_enabled ? "autosync/disable" : "autosync/enable";
+      const autosyncLabel = n.autosync_enabled ? "Disable Autosync" : "Enable Autosync";
+      const deleteButton = n.node_type === "gateway" ? "" : button("Delete", "delete", n.node_id, true);
+      return `<tr>
+        <td><strong>${n.node_name}</strong><br><span class="muted">${n.node_id}</span></td>
+        <td>${n.node_type}</td>
+        <td>${n.profile}</td>
+        <td><span class="pill">${n.status}</span></td>
+        <td>${n.autosync_enabled ? "enabled" : "disabled"}</td>
+        <td>${n.failure_state}</td>
+        <td>${n.docker_image}:${n.image_tag}</td>
+        <td class="actions">
+          ${button("Start", "start", n.node_id)}
+          ${button("Stop", "stop", n.node_id)}
+          ${button("Restart", "restart", n.node_id)}
+          ${button("Reset Chain", "reset-chain", n.node_id, true)}
+          ${button(autosyncLabel, autosyncAction, n.node_id)}
+          ${deleteButton}
+        </td>
+      </tr>`;
+    }).join("");
+    msg(`Loaded ${nodes.length} nodes.`);
+  } catch (err) {
+    msg(err.message, true);
+  }
+}
+
+async function createNode() {
+  try {
+    const payload = {
+      node_type: document.getElementById("nodeType").value,
+      profile: document.getElementById("profile").value
+    };
+    const node = await api("/api/nodes", {method: "POST", body: JSON.stringify(payload)});
+    msg(`Created ${node.node_name}.`);
+    await loadNodes();
+  } catch (err) {
+    msg(err.message, true);
+  }
+}
+
+async function nodeAction(nodeId, action) {
+  try {
+    if (action === "delete") {
+      if (!confirm(`Delete ${nodeId}?`)) return;
+      await api(`/api/nodes/${nodeId}`, {method: "DELETE"});
+      msg(`Deleted ${nodeId}.`);
+    } else {
+      await api(`/api/nodes/${nodeId}/${action}`, {method: "POST"});
+      msg(`${action} completed for ${nodeId}.`);
+    }
+    await loadNodes();
+  } catch (err) {
+    msg(err.message, true);
+  }
+}
+
+loadNodes();
+setInterval(loadNodes, 10000);
+</script>
+</body>
+</html>
+"""
 
 
 @app.get("/api/nodes", response_model=list[NodeRecord])
