@@ -34,6 +34,14 @@ def next_node_number(prefix: str) -> int:
                 used.add(int(node_id.removeprefix(prefix)))
             except ValueError:
                 continue
+    if NODES_DIR.exists():
+        for path in NODES_DIR.iterdir():
+            if not path.is_dir() or not path.name.startswith(prefix):
+                continue
+            try:
+                used.add(int(path.name.removeprefix(prefix)))
+            except ValueError:
+                continue
     candidate = 1
     while candidate in used:
         candidate += 1
