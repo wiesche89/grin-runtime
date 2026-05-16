@@ -36,7 +36,7 @@ services:
     environment:
       RUNTIME_REPO_ROOT: /runtime
       RUNTIME_DOCKER_HOST_ROOT: ${RUNTIME_DOCKER_HOST_ROOT:-..}
-      RUNTIME_COMPOSE_COMMAND: docker-compose
+      RUNTIME_COMPOSE_COMMAND: docker compose
       RUNTIME_DB_PATH: /runtime/controller/runtime.db
       RUNTIME_CONTROLLER_TOKEN: ${RUNTIME_CONTROLLER_TOKEN:-change-me}
       GRIN_RUST_IMAGE: grin-runtime
@@ -152,7 +152,7 @@ services:
       cluster:
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
     container_name: grin-cadvisor
     privileged: true
     volumes:
