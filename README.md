@@ -54,6 +54,8 @@ Set `RUNTIME_CONTROLLER_TOKEN` before running for real usage.
 
 Grafana provisions a `Grin Node Control` dashboard with an embedded controller UI. Enter the runtime token once in the token field, then use the buttons to add, start, stop, restart, reset, delete and toggle autosync for nodes. The token is stored in browser local storage only.
 
+Grafana also provisions `Grin Runtime Operations` for dynamic host, container, node, autosync and failure-state monitoring.
+
 When the controller runs Docker commands from inside its container, dynamic node bind mounts need the host repository path. If Docker cannot mount generated node directories, start with:
 
 ```bash
@@ -75,6 +77,22 @@ curl -X POST http://localhost:8080/api/nodes \
 ```
 
 The controller allocates an ID, creates `nodes/<node_id>`, generates config, updates the generated compose file, updates Prometheus targets, persists metadata in SQLite and starts the container.
+
+## Experiments
+
+```bash
+curl -X POST http://localhost:8080/api/experiments \
+  -H "Content-Type: application/json" \
+  -H "X-Runtime-Token: change-me" \
+  -d '{"name":"PIHD comparison","node_profiles":[{"node_type":"grin-rust","profile":"pihd-test","count":3,"autosync_enabled":true},{"node_type":"grinpp","profile":"benchmark","count":3,"autosync_enabled":true}]}'
+```
+
+Start and stop experiments through:
+
+```text
+POST /api/experiments/{experiment_id}/start
+POST /api/experiments/{experiment_id}/stop
+```
 
 ## Tests
 

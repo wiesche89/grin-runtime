@@ -8,6 +8,8 @@ Write endpoints require `X-Runtime-Token`.
 
 The controller also serves `/ui`, a small operator UI used by the Grafana `Grin Node Control` dashboard. The UI calls only the public controller API endpoints.
 
+The background scheduler collects node observations, updates failure state, completes benchmark runs and executes autosync resets for worker nodes.
+
 Implemented lifecycle endpoints:
 
 - `GET /api/nodes`

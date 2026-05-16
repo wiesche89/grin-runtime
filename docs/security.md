@@ -10,4 +10,5 @@ Safety rules enforced by the controller:
 - `shell=True` is not used
 - generated compose services are derived from registry data only
 - gateway deletion is blocked
-
+- worker creation is bounded by `RUNTIME_MAX_WORKER_NODES`
+- worker creation can be blocked by `RUNTIME_MIN_FREE_DISK_GB`
