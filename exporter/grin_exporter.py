@@ -138,10 +138,12 @@ def metric_line(name, labels, value):
 
 def node_labels(node):
     meta = NODE_META.get(node, {})
+    node_id = meta.get("node_id", node)
+    node_name = meta.get("node_name", node)
     return {
-        "node": node,
-        "node_id": meta.get("node_id", node),
-        "node_name": meta.get("node_name", node),
+        "node": node_name,
+        "node_id": node_id,
+        "node_name": node_name,
         "node_type": meta.get("node_type", "unknown"),
         "profile": meta.get("profile", ""),
         "experiment_id": meta.get("experiment_id") or "",
