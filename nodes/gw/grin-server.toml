@@ -15,10 +15,17 @@ run_test_miner = false
 
 [server.p2p_config]
 host = "0.0.0.0"
-port = 23414
+port = 13414
 seeding_type = "DNSSeed"
 
-peers_preferred = ["192.168.178.20:13414", "grin-node-1:13414", "grin-node-2:13414", "grinpp-node-1:13414"]
+peers_preferred = [
+    "192.168.178.20:13414",
+    "192.168.178.80:13414",
+    "grin-node-1:13414",
+    "grin-node-2:13414",
+    "grinpp-node-1:13414"
+]
+#peers_preferred = ["192.168.178.20:13414", "grin-node-1:13414", "grin-node-2:13414", "grinpp-node-1:13414"]
 peer_max_inbound_count = 32
 peer_max_outbound_count = 12
 peer_min_preferred_outbound_count = 8
