@@ -17,7 +17,7 @@ The platform starts a static gateway node plus the monitoring/control plane. Add
 ## Run
 
 ```bash
-docker compose up --build
+RUNTIME_DOCKER_HOST_ROOT=$PWD docker compose up --build
 ```
 
 Initial services:
@@ -56,10 +56,10 @@ Grafana provisions a `Grin Node Control` dashboard with an embedded controller U
 
 Grafana also provisions `Grin Runtime Operations` for dynamic host, container, node, autosync and failure-state monitoring.
 
-When the controller runs Docker commands from inside its container, dynamic node bind mounts need the host repository path. If Docker cannot mount generated node directories, start with:
+When the controller runs Docker commands from inside its container, dynamic node bind mounts need the absolute host repository path. Start from the repository root with:
 
 ```bash
-RUNTIME_DOCKER_HOST_ROOT=/absolute/path/to/grin-runtime docker compose up --build
+RUNTIME_DOCKER_HOST_ROOT=$PWD docker compose up --build
 ```
 
 ## Create Nodes

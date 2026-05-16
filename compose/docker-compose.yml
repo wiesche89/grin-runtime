@@ -34,8 +34,9 @@ services:
     depends_on:
       - grin-gw
     environment:
+      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-grin-runtime}
       RUNTIME_REPO_ROOT: /runtime
-      RUNTIME_DOCKER_HOST_ROOT: ${RUNTIME_DOCKER_HOST_ROOT:-..}
+      RUNTIME_DOCKER_HOST_ROOT: ${RUNTIME_DOCKER_HOST_ROOT:?Set RUNTIME_DOCKER_HOST_ROOT to the absolute host repository path}
       RUNTIME_COMPOSE_COMMAND: docker compose
       RUNTIME_DB_PATH: /runtime/controller/runtime.db
       RUNTIME_CONTROLLER_TOKEN: ${RUNTIME_CONTROLLER_TOKEN:-change-me}

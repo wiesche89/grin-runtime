@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from . import compose_generator, config_generator, monitoring_generator, storage
 from .models import NodeCreate
 from .security import ensure_child_path, validate_node_id
-from .utils import NODES_DIR, REPO_ROOT, compose_args, remove_path, run_command, utcnow_iso
+from .utils import NODES_DIR, REPO_ROOT, RuntimeCommandError, compose_args, remove_path, run_command, utcnow_iso
 
 
 RUST_IMAGE = os.environ.get("GRIN_RUST_IMAGE", "grin-runtime")
@@ -137,11 +137,27 @@ def create_node(payload: NodeCreate) -> dict:
     storage.log_action("create", node_id)
     refresh_generated_files()
     if payload.start:
-        start_node(node_id)
+        try:
+            start_node(node_id)
+        except RuntimeCommandError as err:
+            storage.update_node(
+                node_id,
+                status="failed",
+                failure_state="container_stopped",
+                last_action="start-failed",
+            )
+            storage.log_action("start-failed", node_id, str(err))
+            raise HTTPException(status_code=502, detail=f"node was created but container start failed: {err}") from err
     return storage.get_node(node_id)
 
 
 def enforce_resource_limits() -> None:
+    host_root = os.environ.get("RUNTIME_DOCKER_HOST_ROOT", "")
+    if not host_root or not Path(host_root).is_absolute():
+        raise HTTPException(
+            status_code=503,
+            detail="RUNTIME_DOCKER_HOST_ROOT must be set to the absolute host repository path",
+        )
     max_nodes = int(os.environ.get("RUNTIME_MAX_WORKER_NODES", "100"))
     active_workers = [node for node in storage.list_nodes() if node["node_type"] != "gateway" and node["status"] != "deleted"]
     if len(active_workers) >= max_nodes:

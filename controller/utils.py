@@ -17,6 +17,15 @@ NODES_DIR = REPO_ROOT / "nodes"
 PROM_TARGETS_DIR = REPO_ROOT / "monitoring" / "prometheus" / "targets"
 
 
+class RuntimeCommandError(RuntimeError):
+    def __init__(self, args: Sequence[str], stderr: str, stdout: str = "") -> None:
+        self.args_list = list(args)
+        self.stderr = stderr.strip()
+        self.stdout = stdout.strip()
+        detail = self.stderr or self.stdout or "command failed"
+        super().__init__(detail)
+
+
 def utcnow_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -46,21 +55,26 @@ def remove_path(path: Path) -> None:
 def run_command(args: Sequence[str], *, dry_run: bool = False, timeout: int = 120) -> subprocess.CompletedProcess[str] | None:
     if dry_run:
         return None
-    return subprocess.run(
-        list(args),
-        cwd=REPO_ROOT,
-        check=True,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        timeout=timeout,
-    )
+    try:
+        return subprocess.run(
+            list(args),
+            cwd=REPO_ROOT,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=timeout,
+        )
+    except subprocess.CalledProcessError as err:
+        raise RuntimeCommandError(args, err.stderr or "", err.stdout or "") from err
 
 
 def compose_args(*extra: str) -> list[str]:
     base = shlex.split(os.environ.get("RUNTIME_COMPOSE_COMMAND", "docker compose"))
     return [
         *base,
+        "-p",
+        os.environ.get("COMPOSE_PROJECT_NAME", "grin-runtime"),
         "-f",
         str(COMPOSE_DIR / "docker-compose.yml"),
         "-f",
