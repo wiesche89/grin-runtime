@@ -51,6 +51,12 @@ X-Runtime-Token: change-me
 
 Set `RUNTIME_CONTROLLER_TOKEN` before running for real usage.
 
+When the controller runs Docker commands from inside its container, dynamic node bind mounts need the host repository path. If Docker cannot mount generated node directories, start with:
+
+```bash
+RUNTIME_DOCKER_HOST_ROOT=/absolute/path/to/grin-runtime docker compose up --build
+```
+
 ## Create Nodes
 
 ```bash
@@ -72,4 +78,3 @@ The controller allocates an ID, creates `nodes/<node_id>`, generates config, upd
 ```bash
 python -m pytest
 ```
-
