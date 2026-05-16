@@ -98,6 +98,7 @@ def control_ui() -> str:
 </main>
 <script>
 const tokenInput = document.getElementById("token");
+const apiBase = window.location.pathname.endsWith("/ui") ? window.location.pathname.slice(0, -3) : "";
 tokenInput.value = localStorage.getItem("runtimeToken") || "";
 tokenInput.addEventListener("change", () => localStorage.setItem("runtimeToken", tokenInput.value));
 
@@ -115,7 +116,7 @@ async function api(path, options = {}) {
   if (options.body) {
     headers["Content-Type"] = "application/json";
   }
-  const res = await fetch(path, {...options, headers});
+  const res = await fetch(`${apiBase}${path}`, {...options, headers});
   const text = await res.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch (_) { data = text; }

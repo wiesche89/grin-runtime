@@ -8,6 +8,7 @@ datasources:
     url: http://prometheus:9090
     isDefault: true
   - name: Runtime Controller
+    uid: runtime-controller
     type: yesoreyeram-infinity-datasource
     access: proxy
     url: http://runtime-controller:8080
