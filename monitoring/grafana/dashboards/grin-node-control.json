@@ -47,6 +47,6 @@
   "timezone": "browser",
   "title": "Grin Node Control",
   "uid": "grin-node-control",
-  "version": 1,
+  "version": 10,
   "weekStart": ""
 }
