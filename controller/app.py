@@ -80,15 +80,44 @@ def disable_autosync(node_id: str) -> dict:
 def system_resources() -> dict:
     total, used, free = shutil.disk_usage(os.environ.get("RUNTIME_REPO_ROOT", "."))
     nodes = storage.list_nodes()
+    mem = read_meminfo()
     return {
-        "host_cpu_percent": None,
-        "host_ram_percent": None,
+        "load_average": read_load_average(),
+        "host_ram_percent": mem.get("ram_percent"),
+        "swap_percent": mem.get("swap_percent"),
         "disk_total_bytes": total,
         "disk_used_bytes": used,
         "disk_free_bytes": free,
         "running_node_count": len([node for node in nodes if node["status"] == "running"]),
         "node_count": len(nodes),
     }
+
+
+def read_load_average() -> dict | None:
+    try:
+        one, five, fifteen = os.getloadavg()
+        return {"1m": one, "5m": five, "15m": fifteen}
+    except OSError:
+        return None
+
+
+def read_meminfo() -> dict:
+    try:
+        values = {}
+        with open("/proc/meminfo", "r", encoding="utf-8") as meminfo:
+            for line in meminfo:
+                key, raw = line.split(":", 1)
+                values[key] = int(raw.strip().split()[0]) * 1024
+        total = values.get("MemTotal", 0)
+        available = values.get("MemAvailable", 0)
+        swap_total = values.get("SwapTotal", 0)
+        swap_free = values.get("SwapFree", 0)
+        return {
+            "ram_percent": round(((total - available) / total) * 100, 2) if total else None,
+            "swap_percent": round(((swap_total - swap_free) / swap_total) * 100, 2) if swap_total else 0,
+        }
+    except (FileNotFoundError, ValueError, IndexError):
+        return {"ram_percent": None, "swap_percent": None}
 
 
 @app.get("/api/system/health", response_model=SystemHealth)
