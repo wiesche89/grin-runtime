@@ -1,0 +1,173 @@
+services:
+  grin-gw:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        GRIN_REPO: ${GRIN_REPO:-https://github.com/wiesche89/grin.git}
+        GRIN_BRANCH: ${GRIN_BRANCH:-staging}
+    image: grin-runtime:staging
+    container_name: grin-gw
+    command: ["--testnet", "server", "-c", "/root/.grin/test/grin-server.toml", "run"]
+    volumes:
+      - ../nodes/gw:/root/.grin/test
+    labels:
+      - "grin.node_id=gw"
+      - "grin.node_name=grin-gw"
+      - "grin.node_type=gateway"
+      - "grin.profile=gateway"
+    networks:
+      public:
+      cluster:
+        aliases:
+          - grin-gw
+    ports:
+      - "23414:13414"
+      - "13413:13413"
+
+  runtime-controller:
+    build:
+      context: ..
+      dockerfile: controller/Dockerfile
+    image: grin-runtime-controller:local
+    container_name: grin-runtime-controller
+    depends_on:
+      - grin-gw
+    environment:
+      RUNTIME_REPO_ROOT: /runtime
+      RUNTIME_DOCKER_HOST_ROOT: ${RUNTIME_DOCKER_HOST_ROOT:-..}
+      RUNTIME_COMPOSE_COMMAND: docker-compose
+      RUNTIME_DB_PATH: /runtime/controller/runtime.db
+      RUNTIME_CONTROLLER_TOKEN: ${RUNTIME_CONTROLLER_TOKEN:-change-me}
+      GRIN_RUST_IMAGE: grin-runtime
+      GRIN_RUST_TAG: staging
+      GRINPP_IMAGE: grin-runtime-grinpp
+      GRINPP_TAG: master
+    volumes:
+      - ..:/runtime
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      cluster:
+      public:
+    ports:
+      - target: 8080
+        published: 8080
+        protocol: tcp
+        host_ip: 0.0.0.0
+
+  monitor:
+    image: python:3.12-alpine
+    depends_on:
+      - runtime-controller
+    working_dir: /monitor
+    command: ["python", "monitor_v2.py"]
+    environment:
+      GRIN_API_SECRET: "node-test-owner-secret"
+      GRIN_CONTROLLER_URL: "http://runtime-controller:8080"
+      GRIN_POLL_SECS: "15"
+      GRIN_HEIGHT_LAG_WARN: "2"
+    volumes:
+      - ../monitor:/monitor:ro
+      - ../nodes:/nodes:ro
+    networks:
+      cluster:
+
+  grin-exporter:
+    build:
+      context: ../exporter
+      dockerfile: Dockerfile
+    image: grin-runtime-exporter:local
+    depends_on:
+      - runtime-controller
+    environment:
+      GRIN_API_SECRET: "node-test-owner-secret"
+      GRIN_CONTROLLER_URL: "http://runtime-controller:8080"
+      GRIN_EXPORTER_POLL_SECS: "10"
+      GRIN_EXPORTER_PORT: "9108"
+    networks:
+      cluster:
+      public:
+    ports:
+      - target: 9108
+        published: 9108
+        protocol: tcp
+        host_ip: 0.0.0.0
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    depends_on:
+      - grin-exporter
+      - node-exporter
+      - cadvisor
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/prometheus/targets:/etc/prometheus/targets:ro
+      - prometheus-data:/prometheus
+    networks:
+      cluster:
+      public:
+    ports:
+      - target: 9090
+        published: 9090
+        protocol: tcp
+        host_ip: 0.0.0.0
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_INSTALL_PLUGINS: "marcusolsson-json-datasource,yesoreyeram-infinity-datasource"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      cluster:
+      public:
+    ports:
+      - target: 3000
+        published: 3000
+        protocol: tcp
+        host_ip: 0.0.0.0
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: grin-node-exporter
+    command:
+      - "--path.rootfs=/host"
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      cluster:
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: grin-cadvisor
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      cluster:
+
+networks:
+  public:
+  cluster:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  prometheus-data:
+  grafana-data:
