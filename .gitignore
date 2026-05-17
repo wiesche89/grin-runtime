@@ -1,3 +1,5 @@
+nodes/node-*/
+nodes/grinpp-node-*/
 nodes/*/chain_data/
 nodes/*/grin-server.log
 nodes/*/grin-server.log.*
