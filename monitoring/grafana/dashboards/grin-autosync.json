@@ -1,0 +1,45 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [{ "asDropdown": false, "icon": "apps", "includeVars": false, "keepTime": true, "tags": [], "targetBlank": false, "title": "Node Control", "tooltip": "", "type": "link", "url": "/d/grin-node-control/grin-node-control" }],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Autosync Enabled",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "targets": [{ "expr": "sum(max by (node_id) (grin_runtime_autosync_enabled))", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "area", "justifyMode": "auto" }
+    },
+    {
+      "type": "table",
+      "title": "Autosync Nodes",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 6 },
+      "targets": [{ "expr": "max by (node_id, node_name, node_type, profile, status) (grin_runtime_autosync_enabled)", "format": "table", "instant": true, "refId": "A" }],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true }
+    },
+    {
+      "type": "timeseries",
+      "title": "Sync State",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "targets": [{ "expr": "max by (node, sync_status) (grin_node_sync_status)", "legendFormat": "{{node}} {{sync_status}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["grin", "autosync", "runtime"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Grin Autosync Dashboard",
+  "uid": "grin-autosync",
+  "version": 1,
+  "weekStart": ""
+}

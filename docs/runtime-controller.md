@@ -10,6 +10,12 @@ The controller also serves `/ui`, a small operator UI used by the Grafana `Grin 
 
 The background scheduler collects node observations, updates failure state, completes benchmark runs and executes autosync resets for worker nodes.
 
+The controller also serves read-only dashboard pages:
+
+- `/ui/benchmarks`
+- `/ui/experiments`
+- `/ui/failures`
+
 Implemented lifecycle endpoints:
 
 - `GET /api/nodes`

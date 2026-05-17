@@ -34,3 +34,13 @@ def run_once() -> None:
         state = evaluate_node(node, storage.recent_observations(node["node_id"], 6))
         if node.get("failure_state") != state:
             storage.update_node(node["node_id"], failure_state=state)
+        run = storage.get_benchmark_run(node["node_id"], node["sync_run_id"]) if node.get("sync_run_id") else None
+        if state not in ("ok", "unknown") and run and run.get("result") == "running" and node.get("node_type") != "gateway":
+            latest = storage.latest_observation(node["node_id"]) or {}
+            storage.complete_benchmark_run(
+                node,
+                node["sync_run_id"],
+                latest.get("height"),
+                result="failed",
+                error_message=state,
+            )

@@ -1,0 +1,48 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "datasource": null,
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 22, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "code": { "language": "plaintext", "showLineNumbers": false, "showMiniMap": false },
+        "content": "<iframe src=\"${controller_url}/ui/failures\" style=\"width:100%;height:100%;min-height:760px;border:0;background:#111217;\"></iframe>",
+        "mode": "html"
+      },
+      "pluginVersion": "11.2.0",
+      "title": "Failure Dashboard",
+      "type": "text"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["grin", "failures", "runtime"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "http://192.168.178.38:8080", "value": "http://192.168.178.38:8080" },
+        "hide": 0,
+        "label": "Controller URL",
+        "name": "controller_url",
+        "options": [{ "selected": true, "text": "http://192.168.178.38:8080", "value": "http://192.168.178.38:8080" }],
+        "query": "http://192.168.178.38:8080",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Grin Failure Dashboard",
+  "uid": "grin-failures",
+  "version": 1,
+  "weekStart": ""
+}

@@ -10,3 +10,5 @@ Supported endpoints:
 - `POST /api/nodes/{node_id}/autosync/disable`
 
 Autosync actions are written to `action_log`. Each restart creates a new `sync_run_id` and benchmark row.
+
+Grafana provisions `Grin Autosync Dashboard` for autosync state and sync-state monitoring.

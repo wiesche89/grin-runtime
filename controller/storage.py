@@ -87,6 +87,7 @@ def init_db() -> None:
             create table if not exists node_observations (
               id integer primary key autoincrement,
               node_id text not null,
+              sync_run_id text,
               observed_at text not null,
               api_up integer not null,
               container_running integer not null,
@@ -123,6 +124,7 @@ def init_db() -> None:
             """
         )
         ensure_column(conn, "experiments", "node_profiles_json", "text not null default '[]'")
+        ensure_column(conn, "node_observations", "sync_run_id", "text")
         ensure_gateway(conn)
 
 
@@ -213,7 +215,7 @@ def list_benchmarks() -> list[dict[str, Any]]:
 
 def insert_observation(node_id: str, data: dict[str, Any]) -> None:
     columns = [
-        "node_id", "observed_at", "api_up", "container_running", "sync_state", "height", "header_height",
+        "node_id", "sync_run_id", "observed_at", "api_up", "container_running", "sync_state", "height", "header_height",
         "peer_count", "cpu_percent", "ram_bytes", "disk_read_bytes", "disk_write_bytes",
         "network_rx_bytes", "network_tx_bytes", "error_message",
     ]
@@ -269,6 +271,15 @@ def start_benchmark_run(node: dict[str, Any], sync_run_id: str) -> None:
         )
 
 
+def get_benchmark_run(node_id: str, sync_run_id: str) -> dict[str, Any] | None:
+    with connect() as conn:
+        row = conn.execute(
+            "select * from benchmark_runs where node_id = ? and sync_run_id = ?",
+            (node_id, sync_run_id),
+        ).fetchone()
+        return dict(row) if row else None
+
+
 def complete_benchmark_run(node: dict[str, Any], sync_run_id: str, final_height: int | None, result: str = "success", error_message: str | None = None) -> None:
     with connect() as conn:
         row = conn.execute(
@@ -283,28 +294,60 @@ def complete_benchmark_run(node: dict[str, Any], sync_run_id: str, final_height:
             started = datetime.fromisoformat(row["sync_started_at"])
             ended = datetime.fromisoformat(completed)
             duration = max(0.0, (ended - started).total_seconds())
+        durations = phase_durations(conn, node["node_id"], sync_run_id)
         stats = conn.execute(
             """
             select avg(peer_count) as average_peer_count, max(cpu_percent) as max_cpu_usage,
                    max(ram_bytes) as max_ram_usage, max(coalesce(disk_read_bytes, 0) + coalesce(disk_write_bytes, 0)) as max_disk_io
-            from node_observations where node_id = ?
+            from node_observations where node_id = ? and sync_run_id = ?
             """,
-            (node["node_id"],),
+            (node["node_id"], sync_run_id),
         ).fetchone()
         conn.execute(
             """
             update benchmark_runs
-            set sync_completed_at = ?, total_sync_duration = ?, final_height = ?,
+            set sync_completed_at = ?, total_sync_duration = ?, header_sync_duration = ?,
+                PIHD_duration = ?, PIBD_duration = ?, rangeproof_validation_duration = ?,
+                kernel_validation_duration = ?, final_height = ?,
                 average_peer_count = ?, max_cpu_usage = ?, max_ram_usage = ?, max_disk_io = ?,
                 result = ?, error_message = ?
             where node_id = ? and sync_run_id = ?
             """,
             (
-                completed, duration, final_height, stats["average_peer_count"], stats["max_cpu_usage"],
+                completed, duration, durations["header_sync_duration"], durations["PIHD_duration"],
+                durations["PIBD_duration"], durations["rangeproof_validation_duration"],
+                durations["kernel_validation_duration"], final_height, stats["average_peer_count"], stats["max_cpu_usage"],
                 stats["max_ram_usage"], stats["max_disk_io"], result, error_message,
                 node["node_id"], sync_run_id,
             ),
         )
+
+
+def phase_durations(conn: sqlite3.Connection, node_id: str, sync_run_id: str) -> dict[str, float | None]:
+    rows = conn.execute(
+        """
+        select sync_state, min(observed_at) as started, max(observed_at) as ended
+        from node_observations
+        where node_id = ? and sync_run_id = ? and sync_state is not null
+        group by sync_state
+        """,
+        (node_id, sync_run_id),
+    ).fetchall()
+    from datetime import datetime
+
+    def seconds_between(start: str | None, end: str | None) -> float | None:
+        if not start or not end:
+            return None
+        return max(0.0, (datetime.fromisoformat(end) - datetime.fromisoformat(start)).total_seconds())
+
+    by_state = {row["sync_state"]: seconds_between(row["started"], row["ended"]) for row in rows}
+    return {
+        "header_sync_duration": by_state.get("header_sync"),
+        "PIHD_duration": by_state.get("txhashset_download"),
+        "PIBD_duration": by_state.get("txhashset_pibd"),
+        "rangeproof_validation_duration": by_state.get("txhashset_rangeproofs_validation"),
+        "kernel_validation_duration": by_state.get("txhashset_kernels_validation"),
+    }
 
 
 def list_experiments() -> list[dict[str, Any]]:

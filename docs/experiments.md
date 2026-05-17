@@ -14,3 +14,5 @@ Example `node_profiles` item:
 ```json
 {"node_type":"grin-rust","profile":"pihd-test","count":3,"autosync_enabled":true}
 ```
+
+Grafana provisions `Grin Experiments` for stored experiment metadata.

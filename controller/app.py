@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from html import escape
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Query
@@ -211,6 +212,69 @@ async function loadSecurity() {
 </body>
 </html>
 """
+
+
+def table_page(title: str, rows: list[dict], columns: list[str]) -> str:
+    header = "".join(f"<th>{escape(column)}</th>" for column in columns)
+    body = ""
+    for row in rows:
+        body += "<tr>" + "".join(f"<td>{escape(str(row.get(column, '') or ''))}</td>" for column in columns) + "</tr>"
+    return f"""
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{escape(title)}</title>
+  <style>
+    :root {{ color-scheme: dark; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
+    body {{ margin: 0; background: #111217; color: #e8eaf0; }}
+    main {{ padding: 16px; }}
+    h1 {{ font-size: 16px; margin: 0 0 14px; }}
+    table {{ width: 100%; border-collapse: collapse; }}
+    th, td {{ border-bottom: 1px solid #272b35; padding: 9px 8px; text-align: left; vertical-align: top; font-size: 13px; }}
+    th {{ color: #aeb7c8; font-weight: 600; position: sticky; top: 0; background: #111217; }}
+  </style>
+</head>
+<body><main>
+  <h1>{escape(title)}</h1>
+  <table><thead><tr>{header}</tr></thead><tbody>{body}</tbody></table>
+</main></body>
+</html>
+"""
+
+
+@app.get("/ui/benchmarks", response_class=HTMLResponse, include_in_schema=False)
+def benchmark_ui() -> str:
+    columns = [
+        "id", "node_name", "node_type", "profile", "experiment_id", "sync_run_id", "sync_started_at",
+        "sync_completed_at", "total_sync_duration", "header_sync_duration", "PIHD_duration",
+        "PIBD_duration", "rangeproof_validation_duration", "kernel_validation_duration", "final_height",
+        "average_peer_count", "max_cpu_usage", "max_ram_usage", "max_disk_io", "result", "error_message",
+    ]
+    return table_page("Benchmark History", storage.list_benchmarks(), columns)
+
+
+@app.get("/ui/experiments", response_class=HTMLResponse, include_in_schema=False)
+def experiment_ui() -> str:
+    columns = ["experiment_id", "experiment_name", "description", "status", "created_at", "started_at", "stopped_at", "node_profiles_json", "labels_json"]
+    return table_page("Experiments", storage.list_experiments(), columns)
+
+
+@app.get("/ui/failures", response_class=HTMLResponse, include_in_schema=False)
+def failure_ui() -> str:
+    nodes = storage.list_nodes()
+    rows = []
+    for node in nodes:
+        latest = storage.latest_observation(node["node_id"]) or {}
+        rows.append({**node, **{f"latest_{key}": value for key, value in latest.items()}})
+    columns = [
+        "node_id", "node_name", "node_type", "profile", "status", "failure_state", "sync_state",
+        "latest_observed_at", "latest_api_up", "latest_container_running", "latest_height",
+        "latest_header_height", "latest_peer_count", "latest_cpu_percent", "latest_ram_bytes",
+        "latest_error_message",
+    ]
+    return table_page("Failure Dashboard", rows, columns)
 
 
 @app.get("/api/nodes", response_model=list[NodeRecord])

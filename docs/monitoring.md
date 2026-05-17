@@ -16,5 +16,9 @@ Grafana provisions:
 - `Grin Runtime`
 - `Grin Node Control`
 - `Grin Runtime Operations`
+- `Grin Benchmark History`
+- `Grin Experiments`
+- `Grin Failure Dashboard`
+- `Grin Autosync Dashboard`
 
-Prometheus and Grafana alert definitions cover node unreachable, peer count zero, stopped container and high CPU.
+Prometheus and Grafana alert definitions cover node unreachable, peer count zero, stopped container, high CPU, host RAM, disk usage and autosync failure.

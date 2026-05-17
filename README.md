@@ -55,6 +55,7 @@ By default the local runtime starts without a write token. Set `RUNTIME_CONTROLL
 Grafana provisions a `Grin Node Control` dashboard with an embedded controller UI. If write auth is enabled, enter the runtime token once in the token field. If auth is disabled, the token field is hidden.
 
 Grafana also provisions `Grin Runtime Operations` for dynamic host, container, node, autosync and failure-state monitoring.
+Additional dashboards show benchmark history, experiments, autosync state and failure details.
 
 When the controller runs Docker commands from inside its container, dynamic node bind mounts need the absolute host repository path. Start from the repository root with:
 

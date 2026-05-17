@@ -6,4 +6,14 @@ The schema tracks node identity, image and commit metadata, sync run timestamps,
 
 The controller starts a benchmark row when a worker node starts or resets. It completes the row when the node reports a full sync state, storing total duration, final height and observed resource maxima.
 
+Phase durations are derived from observed sync-state transitions where the node exposes them:
+
+- `header_sync_duration` from `header_sync`
+- `PIHD_duration` from `txhashset_download`
+- `PIBD_duration` from `txhashset_pibd`
+- `rangeproof_validation_duration` from `txhashset_rangeproofs_validation`
+- `kernel_validation_duration` from `txhashset_kernels_validation`
+
 `GET /api/benchmarks` returns recent benchmark rows.
+
+Grafana provisions `Grin Benchmark History` for the same data.

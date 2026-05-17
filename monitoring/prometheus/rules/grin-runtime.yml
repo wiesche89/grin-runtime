@@ -29,3 +29,24 @@ groups:
           severity: warning
         annotations:
           summary: Node CPU usage is high
+      - alert: GrinHighHostRam
+        expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Host RAM usage is high
+      - alert: GrinHighDiskUsage
+        expr: 100 * (1 - (node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"})) > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Host disk usage is high
+      - alert: GrinAutosyncFailure
+        expr: grin_runtime_autosync_enabled == 1 and on (node_id) grin_runtime_failure_state{failure_state!="ok"} == 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Autosync node has a failure state

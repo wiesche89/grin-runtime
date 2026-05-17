@@ -33,6 +33,7 @@ def set_autosync(node_id: str, enabled: bool) -> dict:
 
 def observe_node(node: dict) -> dict:
     observation = collect_node_observation(node)
+    observation["sync_run_id"] = node.get("sync_run_id")
     storage.insert_observation(node["node_id"], observation)
     updates = {
         "sync_state": observation.get("sync_state") or node.get("sync_state") or "unknown",
