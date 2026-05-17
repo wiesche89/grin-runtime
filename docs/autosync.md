@@ -4,7 +4,7 @@ Autosync is stored per node in SQLite as `autosync_enabled`.
 
 The scheduler polls node status, stores observations, detects completed sync runs and resets worker nodes when autosync is enabled. Reset means stop container, delete chain data/logs inside the node directory, and start the container again. For Grin++ the complete `FLOONET` runtime directory is removed and the generated config is recreated before restart.
 
-Completion is detected by comparing worker height to gateway height. A worker is considered complete when it is API-up, has peers, and its current block height is within `RUNTIME_SYNC_COMPLETE_LAG` blocks of `grin-gw`.
+Completion is detected by comparing worker height to gateway height and validating the local chain through the owner API. A worker is considered complete when it is API-up, has peers, its current block height is within `RUNTIME_SYNC_COMPLETE_LAG` blocks of `grin-gw`, and `validate_chain` succeeds.
 
 The default lag is:
 

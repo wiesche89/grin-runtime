@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone
 
 from . import storage
-from .runtime_probe import collect_node_observation
+from .runtime_probe import collect_node_observation, rpc
 
 
 DEFAULT_SYNC_COMPLETE_LAG = 2
@@ -35,7 +35,19 @@ def is_sync_complete(node: dict, latest_sync_state: str, observation: dict) -> b
         return False
     lag = abs(int(gw_height) - int(height))
     allowed_lag = sync_complete_lag()
-    return lag <= allowed_lag
+    if lag > allowed_lag:
+        return False
+    return chain_validation_passed(node)
+
+
+def chain_validation_passed(node: dict) -> bool:
+    if os.environ.get("RUNTIME_REQUIRE_VALIDATE_CHAIN", "true").lower() in ("0", "false", "no"):
+        return True
+    try:
+        rpc(node, "validate_chain")
+    except Exception:
+        return False
+    return True
 
 
 def sync_complete_lag() -> int:

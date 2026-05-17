@@ -10,6 +10,7 @@ Because Grin can report `no_sync` before the node is fully caught up, benchmark 
 Completion default:
 
 - Worker height must be within `RUNTIME_SYNC_COMPLETE_LAG=2` blocks of `grin-gw`.
+- `validate_chain` must succeed via the node owner API. This prevents a run from finishing when the API height is near the gateway but local chain validation is still incomplete.
 
 Failed benchmark completion is also guarded against startup transients. API/container/peer failures must be confirmed across `RUNTIME_BENCHMARK_FAILURE_OBSERVATIONS=3` recent observations before a running benchmark is marked failed.
 
