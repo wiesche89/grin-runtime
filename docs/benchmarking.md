@@ -4,8 +4,8 @@ Benchmark history is stored in SQLite table `benchmark_runs`.
 
 The schema tracks node identity, image and commit metadata, sync run timestamps, sync durations, validation phase durations, final height, peer count, resource maxima, result and error message.
 
-The controller starts a benchmark row when a worker node starts or resets. It completes the row when the node is API-up, has peers, and its current block height is close to the gateway height. It then stores total duration, final height and observed resource maxima.
-Because Grin can report `no_sync` before the node is fully caught up, benchmark completion is based on worker height near the gateway height rather than treating `no_sync` as complete.
+The controller starts a benchmark row when a worker node starts or resets. It completes the row when the node is API-up, has peers, and its local block height is close to the gateway block height. It then stores total duration, final height and observed resource maxima.
+Because Grin can expose `tip.height` near the network height before local block sync/validation is actually complete, benchmark completion uses `sync_info.current_height` as the local block height. `tip.height` is only a fallback when `sync_info.current_height` is not exposed.
 
 Completion default:
 

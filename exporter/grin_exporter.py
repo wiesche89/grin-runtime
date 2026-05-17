@@ -194,12 +194,49 @@ def connection_count(status, peers):
     return max(int(status.get("connections", 0) or 0), len(peers or []))
 
 
+def int_or_none(value):
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def sync_info(status):
+    info = status.get("sync_info")
+    return info if isinstance(info, dict) else {}
+
+
+def local_block_height(status):
+    height = int_or_none(sync_info(status).get("current_height"))
+    if height is not None:
+        return height
+    tip = status.get("tip") if isinstance(status.get("tip"), dict) else {}
+    return int_or_none(tip.get("height")) or 0
+
+
+def header_height(status):
+    header_head = status.get("header_head")
+    if isinstance(header_head, dict):
+        height = int_or_none(header_head.get("height"))
+        if height is not None:
+            return height
+    height = int_or_none(sync_info(status).get("highest_height"))
+    if height is not None:
+        return height
+    tip = status.get("tip") if isinstance(status.get("tip"), dict) else {}
+    return int_or_none(tip.get("height")) or 0
+
+
 def render_metrics():
     out = []
     out.append("# HELP grin_node_up Whether API v2 polling succeeded.\n")
     out.append("# TYPE grin_node_up gauge\n")
-    out.append("# HELP grin_node_height Current node chain height.\n")
+    out.append("# HELP grin_node_height Current local block height from sync_info.current_height.\n")
     out.append("# TYPE grin_node_height gauge\n")
+    out.append("# HELP grin_node_header_height Current header or advertised highest height.\n")
+    out.append("# TYPE grin_node_header_height gauge\n")
     out.append("# HELP grin_node_total_difficulty Current node total difficulty.\n")
     out.append("# TYPE grin_node_total_difficulty gauge\n")
     out.append("# HELP grin_node_connections Number of connected peers.\n")
@@ -222,7 +259,8 @@ def render_metrics():
         peers = data.get("peers") or []
         tip = status.get("tip") or {}
         sync_status = status.get("sync_status", "unknown")
-        out.append(metric_line("grin_node_height", labels, tip.get("height", 0)))
+        out.append(metric_line("grin_node_height", labels, local_block_height(status)))
+        out.append(metric_line("grin_node_header_height", labels, header_height(status)))
         out.append(metric_line("grin_node_total_difficulty", labels, tip.get("total_difficulty", 0)))
         out.append(metric_line("grin_node_connections", labels, connection_count(status, peers)))
         out.append(metric_line("grin_node_sync_status", {**labels, "sync_status": sync_status}, STATUS_MAP.get(sync_status, -1)))

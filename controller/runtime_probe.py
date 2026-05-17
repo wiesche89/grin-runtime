@@ -110,6 +110,43 @@ def container_stats(container_name: str) -> dict[str, Any]:
     }
 
 
+def int_or_none(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def sync_info(status: dict[str, Any]) -> dict[str, Any]:
+    info = status.get("sync_info")
+    return info if isinstance(info, dict) else {}
+
+
+def local_block_height(status: dict[str, Any]) -> int | None:
+    info = sync_info(status)
+    height = int_or_none(info.get("current_height"))
+    if height is not None:
+        return height
+    tip = status.get("tip") if isinstance(status.get("tip"), dict) else {}
+    return int_or_none(tip.get("height"))
+
+
+def header_height(status: dict[str, Any]) -> int | None:
+    header_head = status.get("header_head")
+    if isinstance(header_head, dict):
+        height = int_or_none(header_head.get("height"))
+        if height is not None:
+            return height
+    info = sync_info(status)
+    height = int_or_none(info.get("highest_height"))
+    if height is not None:
+        return height
+    tip = status.get("tip") if isinstance(status.get("tip"), dict) else {}
+    return int_or_none(tip.get("height"))
+
+
 def collect_node_observation(node: dict) -> dict[str, Any]:
     running = container_running(node["container_name"])
     stats = container_stats(node["container_name"]) if running else {}
@@ -129,13 +166,12 @@ def collect_node_observation(node: dict) -> dict[str, Any]:
     try:
         status = rpc(node, "get_status") or {}
         peers = rpc(node, "get_connected_peers") or []
-        tip = status.get("tip") or {}
         observation.update(
             {
                 "api_up": 1,
                 "sync_state": status.get("sync_status") or "unknown",
-                "height": tip.get("height"),
-                "header_height": status.get("header_head", {}).get("height") if isinstance(status.get("header_head"), dict) else None,
+                "height": local_block_height(status),
+                "header_height": header_height(status),
                 "peer_count": max(int(status.get("connections", 0) or 0), len(peers)),
             }
         )

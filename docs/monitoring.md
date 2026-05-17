@@ -9,7 +9,7 @@ Prometheus scrapes:
 
 The exporter discovers node metadata from the Runtime Controller and exposes labels including node ID, node type, profile, experiment ID, image tag, commit hash, autosync state and failure state.
 
-The controller scheduler stores node observations and exposes them as `grin_runtime_node_observation` with a `metric` label. This includes API state, container state, height, peers, CPU, RAM, disk IO and network IO where Docker can provide the data.
+The controller scheduler stores node observations and exposes them as `grin_runtime_node_observation` with a `metric` label. This includes API state, container state, local block height, header height, peers, CPU, RAM, disk IO and network IO where Docker can provide the data. Local block height is based on `sync_info.current_height`; header/tip height is exposed separately.
 
 Grafana provisions:
 
