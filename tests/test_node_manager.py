@@ -70,3 +70,80 @@ def test_reset_chain_removes_entire_grinpp_floonet_directory(tmp_path, monkeypat
     node_manager.reset_chain("grinpp-node-1")
 
     assert not (node_path / "FLOONET").exists()
+
+
+def test_reset_chain_clears_previous_completion_timestamp(tmp_path, monkeypatch):
+    nodes_dir = tmp_path / "nodes"
+    node_path = nodes_dir / "node-1"
+    chain_data = node_path / "chain_data"
+    chain_data.mkdir(parents=True)
+    monkeypatch.setattr(node_manager, "NODES_DIR", nodes_dir)
+    monkeypatch.setattr(node_manager, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(node_manager, "compose_args", lambda *args: list(args))
+    monkeypatch.setattr(node_manager, "run_command", lambda args, dry_run=False: None)
+    monkeypatch.setattr(node_manager.storage, "get_node", lambda node_id: {
+        "node_id": "node-1",
+        "node_name": "node-1",
+        "node_type": "grin-rust",
+        "profile": "default",
+        "container_name": "node-1",
+        "node_path": "nodes/node-1",
+        "status": "running",
+    })
+    monkeypatch.setattr(node_manager.storage, "log_action", lambda *args, **kwargs: None)
+    monkeypatch.setattr(node_manager.storage, "start_benchmark_run", lambda *args, **kwargs: None)
+
+    captured = {}
+
+    def update_node(node_id, **kwargs):
+        captured.update(kwargs)
+        return {
+            "node_id": node_id,
+            "node_name": node_id,
+            "node_type": "grin-rust",
+            "profile": "default",
+            **kwargs,
+        }
+
+    monkeypatch.setattr(node_manager.storage, "update_node", update_node)
+
+    node_manager.reset_chain("node-1")
+
+    assert captured["last_sync_completed_at"] is None
+    assert captured["sync_run_id"].startswith("sync-")
+
+
+def test_start_node_clears_previous_completion_timestamp(monkeypatch):
+    monkeypatch.setattr(node_manager, "refresh_generated_files", lambda: None)
+    monkeypatch.setattr(node_manager, "compose_args", lambda *args: list(args))
+    monkeypatch.setattr(node_manager, "run_command", lambda args, dry_run=False: None)
+    monkeypatch.setattr(node_manager.storage, "get_node", lambda node_id: {
+        "node_id": "node-1",
+        "node_name": "node-1",
+        "node_type": "grin-rust",
+        "profile": "default",
+        "container_name": "node-1",
+        "node_path": "nodes/node-1",
+        "status": "stopped",
+    })
+    monkeypatch.setattr(node_manager.storage, "log_action", lambda *args, **kwargs: None)
+    monkeypatch.setattr(node_manager.storage, "start_benchmark_run", lambda *args, **kwargs: None)
+
+    captured = {}
+
+    def update_node(node_id, **kwargs):
+        captured.update(kwargs)
+        return {
+            "node_id": node_id,
+            "node_name": node_id,
+            "node_type": "grin-rust",
+            "profile": "default",
+            **kwargs,
+        }
+
+    monkeypatch.setattr(node_manager.storage, "update_node", update_node)
+
+    node_manager.start_node("node-1")
+
+    assert captured["last_sync_completed_at"] is None
+    assert captured["sync_run_id"].startswith("sync-")

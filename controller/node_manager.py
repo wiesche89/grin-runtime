@@ -186,7 +186,14 @@ def start_node(node_id: str, *, dry_run: bool = False) -> dict:
     run_command(compose_args("up", "-d", service), dry_run=dry_run)
     storage.log_action("start", node_id)
     sync_run_id = f"sync-{uuid.uuid4().hex[:12]}"
-    updated = storage.update_node(node_id, status="running", sync_state="starting", sync_run_id=sync_run_id, last_action="start")
+    updated = storage.update_node(
+        node_id,
+        status="running",
+        sync_state="starting",
+        sync_run_id=sync_run_id,
+        last_sync_completed_at=None,
+        last_action="start",
+    )
     if updated["node_type"] != "gateway":
         storage.start_benchmark_run(updated, sync_run_id)
     return updated
@@ -223,7 +230,14 @@ def reset_chain(node_id: str, *, dry_run: bool = False) -> dict:
     run_command(compose_args("up", "-d", node["container_name"]), dry_run=dry_run)
     storage.log_action("reset-chain", node_id)
     sync_run_id = f"sync-{uuid.uuid4().hex[:12]}"
-    updated = storage.update_node(node_id, status="running", sync_state="reset", sync_run_id=sync_run_id, last_action="reset-chain")
+    updated = storage.update_node(
+        node_id,
+        status="running",
+        sync_state="reset",
+        sync_run_id=sync_run_id,
+        last_sync_completed_at=None,
+        last_action="reset-chain",
+    )
     if updated["node_type"] != "gateway":
         storage.start_benchmark_run(updated, sync_run_id)
     return updated
