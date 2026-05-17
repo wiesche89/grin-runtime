@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 from . import storage
@@ -42,15 +43,56 @@ def is_sync_complete(node: dict, latest_sync_state: str, observation: dict) -> b
         return False
     if (observation.get("peer_count") or 0) <= 0:
         return False
-    if latest_sync_state in FULL_SYNC_STATES:
-        return True
-    height = observation.get("height")
-    gw_height = gateway_height()
-    if height is None or gw_height is None or gw_height <= 0:
+    sync_run_id = node.get("sync_run_id")
+    if not sync_run_id:
         return False
-    lag = int(gw_height) - int(height)
-    allowed_lag = int(__import__("os").environ.get("RUNTIME_SYNC_COMPLETE_LAG", "2"))
-    return lag >= 0 and lag <= allowed_lag
+    if benchmark_age_seconds(node, sync_run_id) < min_sync_seconds(node):
+        return False
+    if latest_sync_state in FULL_SYNC_STATES and stable_near_gateway(node, sync_run_id):
+        return True
+    return stable_near_gateway(node, sync_run_id)
+
+
+def min_sync_seconds(node: dict) -> int:
+    if node.get("node_type") == "grinpp":
+        return int(os.environ.get("RUNTIME_MIN_SYNC_SECONDS_GRINPP", "600"))
+    return int(os.environ.get("RUNTIME_MIN_SYNC_SECONDS_RUST", "300"))
+
+
+def benchmark_age_seconds(node: dict, sync_run_id: str) -> float:
+    run = storage.get_benchmark_run(node["node_id"], sync_run_id)
+    if not run or not run.get("sync_started_at"):
+        return 0.0
+    try:
+        started = datetime.fromisoformat(run["sync_started_at"])
+    except ValueError:
+        return 0.0
+    return max(0.0, (datetime.now(timezone.utc) - started).total_seconds())
+
+
+def stable_near_gateway(node: dict, sync_run_id: str) -> bool:
+    gw_height = gateway_height()
+    if gw_height is None or gw_height <= 0:
+        return False
+    required = int(os.environ.get("RUNTIME_SYNC_COMPLETE_STABLE_OBSERVATIONS", "3"))
+    allowed_lag = int(os.environ.get("RUNTIME_SYNC_COMPLETE_LAG", "2"))
+    scan_limit = max(12, required * 4)
+    observations = [
+        item
+        for item in storage.recent_observations(node["node_id"], scan_limit)
+        if item.get("sync_run_id") == sync_run_id
+    ][:required]
+    if len(observations) < required:
+        return False
+    for item in observations:
+        if not item.get("api_up") or not item.get("container_running"):
+            return False
+        if (item.get("peer_count") or 0) <= 0 or item.get("height") is None:
+            return False
+        lag = int(gw_height) - int(item["height"])
+        if lag < 0 or lag > allowed_lag:
+            return False
+    return True
 
 
 def set_autosync(node_id: str, enabled: bool) -> dict:

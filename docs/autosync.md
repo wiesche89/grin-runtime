@@ -4,7 +4,14 @@ Autosync is stored per node in SQLite as `autosync_enabled`.
 
 The scheduler polls node status, stores observations, detects completed sync runs and resets worker nodes when autosync is enabled. Reset means stop container, delete chain data/logs inside the node directory, and start the container again.
 
-Completion is detected by comparing worker height to gateway height. A worker is considered complete when it is API-up, has peers and its height is within `RUNTIME_SYNC_COMPLETE_LAG` blocks of `grin-gw`. The default lag is `2`.
+Completion is detected by comparing worker height to gateway height. A worker is considered complete when it is API-up, has peers, has run long enough, and multiple recent observations are within `RUNTIME_SYNC_COMPLETE_LAG` blocks of `grin-gw`.
+
+The conservative defaults are:
+
+- `RUNTIME_MIN_SYNC_SECONDS_RUST=300`
+- `RUNTIME_MIN_SYNC_SECONDS_GRINPP=600`
+- `RUNTIME_SYNC_COMPLETE_STABLE_OBSERVATIONS=3`
+- `RUNTIME_SYNC_COMPLETE_LAG=2`
 
 Supported endpoints:
 
