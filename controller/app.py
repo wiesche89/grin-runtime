@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from . import autosync_manager, benchmark_manager, experiment_manager, node_manager, scheduler, storage
 from .models import ExperimentCreate, NodeActionResult, NodeCreate, NodeRecord, SystemHealth
-from .security import require_write_token, validate_node_id
+from .security import require_write_token, validate_node_id, write_auth_required
 
 
 @asynccontextmanager
@@ -101,6 +101,7 @@ const tokenInput = document.getElementById("token");
 const apiBase = window.location.pathname.endsWith("/ui") ? window.location.pathname.slice(0, -3) : "";
 tokenInput.value = localStorage.getItem("runtimeToken") || "";
 tokenInput.addEventListener("change", () => localStorage.setItem("runtimeToken", tokenInput.value));
+let authRequired = true;
 
 function msg(text, isError=false) {
   const el = document.getElementById("message");
@@ -110,7 +111,7 @@ function msg(text, isError=false) {
 
 async function api(path, options = {}) {
   const headers = options.headers || {};
-  if (options.method && options.method !== "GET") {
+  if (authRequired && options.method && options.method !== "GET") {
     headers["X-Runtime-Token"] = tokenInput.value;
   }
   if (options.body) {
@@ -194,7 +195,18 @@ async function nodeAction(nodeId, action) {
 }
 
 loadNodes();
+loadSecurity();
 setInterval(loadNodes, 10000);
+
+async function loadSecurity() {
+  try {
+    const security = await api("/api/system/security");
+    authRequired = Boolean(security.write_auth_required);
+    tokenInput.style.display = authRequired ? "" : "none";
+  } catch (_) {
+    authRequired = true;
+  }
+}
 </script>
 </body>
 </html>
@@ -314,6 +326,11 @@ def system_health() -> dict:
         "running_node_count": len([node for node in nodes if node["status"] == "running"]),
         "failures": failures,
     }
+
+
+@app.get("/api/system/security")
+def system_security() -> dict:
+    return {"write_auth_required": write_auth_required()}
 
 
 @app.get("/metrics", response_class=PlainTextResponse)

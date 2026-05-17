@@ -24,11 +24,15 @@ def validate_profile(profile: str) -> str:
 
 
 def require_write_token(x_runtime_token: str | None = Header(default=None)) -> None:
-    expected = os.environ.get("RUNTIME_CONTROLLER_TOKEN", "change-me")
+    expected = os.environ.get("RUNTIME_CONTROLLER_TOKEN", "")
     if not expected:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="write token is not configured")
+        return
     if x_runtime_token != expected:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid runtime token")
+
+
+def write_auth_required() -> bool:
+    return bool(os.environ.get("RUNTIME_CONTROLLER_TOKEN", ""))
 
 
 def ensure_child_path(root: Path, candidate: Path) -> Path:
@@ -37,4 +41,3 @@ def ensure_child_path(root: Path, candidate: Path) -> Path:
     if root_resolved != candidate_resolved and root_resolved not in candidate_resolved.parents:
         raise ValueError(f"path escapes allowed root: {candidate}")
     return candidate_resolved
-

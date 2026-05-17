@@ -44,15 +44,15 @@ Exporter:            http://localhost:9108/metrics
 Gateway v2:          http://localhost:13413/v2/owner
 ```
 
-Write operations require:
+Write operations can be protected with:
 
 ```text
-X-Runtime-Token: change-me
+X-Runtime-Token: <RUNTIME_CONTROLLER_TOKEN>
 ```
 
-Set `RUNTIME_CONTROLLER_TOKEN` before running for real usage.
+By default the local runtime starts without a write token. Set `RUNTIME_CONTROLLER_TOKEN` before running if you want write protection.
 
-Grafana provisions a `Grin Node Control` dashboard with an embedded controller UI. Enter the runtime token once in the token field, then use the buttons to add, start, stop, restart, reset, delete and toggle autosync for nodes. The token is stored in browser local storage only.
+Grafana provisions a `Grin Node Control` dashboard with an embedded controller UI. If write auth is enabled, enter the runtime token once in the token field. If auth is disabled, the token field is hidden.
 
 Grafana also provisions `Grin Runtime Operations` for dynamic host, container, node, autosync and failure-state monitoring.
 
