@@ -98,6 +98,7 @@ def collect_once():
         if dynamic_nodes:
             NODES = dynamic_nodes
             NODE_META = dynamic_meta
+            prune_removed_nodes(set(dynamic_nodes))
     except Exception as err:
         print(f"[WARN] controller discovery failed: {err}", flush=True)
     for name, url in NODES.items():
@@ -119,6 +120,12 @@ def collect_once():
                 "peers": [],
                 "updated": time.time(),
             }
+
+
+def prune_removed_nodes(active_names):
+    for name in list(LAST):
+        if name not in active_names:
+            del LAST[name]
 
 
 def loop_collect():
