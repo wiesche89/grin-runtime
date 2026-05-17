@@ -8,16 +8,16 @@ from .utils import NODES_DIR, sha256_text, write_json_if_changed, write_text_if_
 
 
 PROFILES = {
-    "gateway": {"peer_max_outbound_count": 12, "peer_min_preferred_outbound_count": 8, "archive_mode": False, "autosync_default": False},
-    "default": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False},
-    "low-memory": {"peer_max_outbound_count": 4, "peer_min_preferred_outbound_count": 1, "archive_mode": False, "autosync_default": False},
-    "high-peers": {"peer_max_outbound_count": 16, "peer_min_preferred_outbound_count": 6, "archive_mode": False, "autosync_default": False},
-    "pihd-test": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": True},
-    "pibd-test": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": True},
-    "archive": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": True, "autosync_default": False},
-    "pruned": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False},
-    "benchmark": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": True},
-    "grinpp-compat": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False},
+    "gateway": {"peer_max_outbound_count": 12, "peer_min_preferred_outbound_count": 8, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "Disabled"},
+    "default": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
+    "low-memory": {"peer_max_outbound_count": 4, "peer_min_preferred_outbound_count": 1, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
+    "high-peers": {"peer_max_outbound_count": 16, "peer_min_preferred_outbound_count": 6, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
+    "pihd-test": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": True, "chain_validation_mode": "EveryBlock"},
+    "pibd-test": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": True, "chain_validation_mode": "EveryBlock"},
+    "archive": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": True, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
+    "pruned": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
+    "benchmark": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": True, "chain_validation_mode": "EveryBlock"},
+    "grinpp-compat": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
 }
 
 
@@ -41,7 +41,7 @@ api_secret_path = "/root/.grin/test/.api_secret"
 foreign_api_secret_path = "/root/.grin/test/.foreign_api_secret"
 chain_type = "Testnet"
 future_time_limit = 300
-chain_validation_mode = "Disabled"
+chain_validation_mode = "{cfg['chain_validation_mode']}"
 archive_mode = {str(bool(cfg["archive_mode"])).lower()}
 skip_sync_wait = false
 run_tui = false
@@ -119,4 +119,3 @@ def generate_grinpp_config(node_id: str, profile: str) -> tuple[Path, str]:
     floonet.mkdir(exist_ok=True)
     write_json_if_changed(floonet / "server_config.json", payload)
     return node_dir, sha256_text(json.dumps(payload, sort_keys=True))
-
