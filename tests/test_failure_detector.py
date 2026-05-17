@@ -39,3 +39,47 @@ def test_resource_limit_does_not_close_benchmark_as_failed():
     ]
 
     assert not failure_detector.benchmark_failure_confirmed("resource_limit", observations)
+
+
+def test_active_sync_states_are_not_stuck_even_when_height_is_constant(monkeypatch):
+    monkeypatch.setattr(failure_detector, "stuck_confirmation_observations", lambda: 3)
+    observations = [
+        {"container_running": 1, "api_up": 1, "peer_count": 2, "height": 0, "header_height": 100, "sync_state": "awaiting_peers"},
+        {"container_running": 1, "api_up": 1, "peer_count": 2, "height": 0, "header_height": 100, "sync_state": "header_sync"},
+        {"container_running": 1, "api_up": 1, "peer_count": 2, "height": 0, "header_height": 100, "sync_state": "txhashsetpibd_download"},
+    ]
+
+    assert not failure_detector.stuck_failure_confirmed(observations)
+
+
+def test_io_activity_is_not_stuck_even_when_height_is_constant(monkeypatch):
+    monkeypatch.setattr(failure_detector, "stuck_confirmation_observations", lambda: 3)
+    observations = [
+        {"container_running": 1, "api_up": 1, "peer_count": 2, "height": 0, "header_height": 100, "sync_state": "unknown", "disk_write_bytes": 30},
+        {"container_running": 1, "api_up": 1, "peer_count": 2, "height": 0, "header_height": 100, "sync_state": "unknown", "disk_write_bytes": 20},
+        {"container_running": 1, "api_up": 1, "peer_count": 2, "height": 0, "header_height": 100, "sync_state": "unknown", "disk_write_bytes": 10},
+    ]
+
+    assert not failure_detector.stuck_failure_confirmed(observations)
+
+
+def test_no_peer_wait_is_not_stuck(monkeypatch):
+    monkeypatch.setattr(failure_detector, "stuck_confirmation_observations", lambda: 3)
+    observations = [
+        {"container_running": 1, "api_up": 1, "peer_count": 0, "height": 0, "header_height": 0, "sync_state": "awaiting_peers"},
+        {"container_running": 1, "api_up": 1, "peer_count": 0, "height": 0, "header_height": 0, "sync_state": "awaiting_peers"},
+        {"container_running": 1, "api_up": 1, "peer_count": 0, "height": 0, "header_height": 0, "sync_state": "awaiting_peers"},
+    ]
+
+    assert not failure_detector.stuck_failure_confirmed(observations)
+
+
+def test_inactive_node_can_be_stuck(monkeypatch):
+    monkeypatch.setattr(failure_detector, "stuck_confirmation_observations", lambda: 3)
+    observations = [
+        {"container_running": 1, "api_up": 1, "peer_count": 2, "height": 10, "header_height": 20, "sync_state": "unknown", "disk_write_bytes": 10},
+        {"container_running": 1, "api_up": 1, "peer_count": 2, "height": 10, "header_height": 20, "sync_state": "unknown", "disk_write_bytes": 10},
+        {"container_running": 1, "api_up": 1, "peer_count": 2, "height": 10, "header_height": 20, "sync_state": "unknown", "disk_write_bytes": 10},
+    ]
+
+    assert failure_detector.stuck_failure_confirmed(observations)

@@ -7,6 +7,19 @@ from . import storage
 
 DEFAULT_FAILURE_CONFIRMATION_OBSERVATIONS = 3
 DEFAULT_STUCK_CONFIRMATION_OBSERVATIONS = 12
+SYNC_ACTIVE_STATES = {
+    "awaiting_peers",
+    "header_sync",
+    "body_sync",
+    "txhashset_download",
+    "txhashset_setup",
+    "txhashset_rangeproofs_validation",
+    "txhashset_kernels_validation",
+    "txhashset_save",
+    "txhashset_done",
+    "txhashset_pibd",
+    "txhashsetpibd_download",
+}
 
 
 def evaluate_node(node: dict, observations: list[dict] | None = None) -> str:
@@ -24,9 +37,7 @@ def evaluate_node(node: dict, observations: list[dict] | None = None) -> str:
         return "api_unreachable"
     if latest.get("peer_count") == 0 and len(observations) >= 3 and all((item.get("peer_count") or 0) == 0 for item in observations[:3]):
         return "peerless"
-    heights = [item.get("height") for item in observations[:6] if item.get("height") is not None]
-    states = {item.get("sync_state") for item in observations[:6]}
-    if len(heights) >= 6 and max(heights) == min(heights) and states.isdisjoint({"no_sync", "synced", "sync_finished"}):
+    if stuck_failure_confirmed(observations):
         return "stuck"
     if latest.get("cpu_percent") is not None and float(latest["cpu_percent"]) > 95:
         return "resource_limit"
@@ -64,7 +75,32 @@ def stuck_failure_confirmed(observations: list[dict]) -> bool:
         return False
     if len(header_heights) == required and max(header_heights) != min(header_heights):
         return False
-    return all(item.get("container_running") and item.get("api_up") for item in recent)
+    if not all(item.get("container_running") and item.get("api_up") for item in recent):
+        return False
+    if any((item.get("peer_count") or 0) == 0 for item in recent):
+        return False
+    if observed_activity(recent):
+        return False
+    return True
+
+
+def observed_activity(observations: list[dict]) -> bool:
+    states = {item.get("sync_state") for item in observations if item.get("sync_state")}
+    if states & SYNC_ACTIVE_STATES:
+        return True
+    return any(metric_increased(observations, key) for key in (
+        "disk_read_bytes",
+        "disk_write_bytes",
+        "network_rx_bytes",
+        "network_tx_bytes",
+    ))
+
+
+def metric_increased(observations: list[dict], key: str) -> bool:
+    values = [int(item[key]) for item in observations if item.get(key) is not None]
+    if len(values) < 2:
+        return False
+    return max(values) > min(values)
 
 
 def failure_confirmation_observations() -> int:

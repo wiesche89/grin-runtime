@@ -12,7 +12,7 @@ Completion default:
 - The latest `RUNTIME_SYNC_COMPLETE_OBSERVATIONS=3` worker observations for the same `sync_run_id` must be within `RUNTIME_SYNC_COMPLETE_LAG=2` blocks of `grin-gw`.
 - `validate_chain` must succeed via the node owner API. This prevents a run from finishing when the API height is near the gateway but local chain validation is still incomplete.
 
-Failed benchmark completion is also guarded against startup transients. API/container/peer failures must be confirmed across `RUNTIME_BENCHMARK_FAILURE_OBSERVATIONS=3` recent observations for the same `sync_run_id` before a running benchmark is marked failed. Stuck detection uses `RUNTIME_STUCK_FAILURE_OBSERVATIONS=12` current-run observations. Resource-limit states are exposed as failures for alerting but do not close benchmark runs as failed.
+Failed benchmark completion is also guarded against startup transients. API/container/peer failures must be confirmed across `RUNTIME_BENCHMARK_FAILURE_OBSERVATIONS=3` recent observations for the same `sync_run_id` before a running benchmark is marked failed. Stuck detection uses `RUNTIME_STUCK_FAILURE_OBSERVATIONS=12` current-run observations and only fires when height/header are unchanged, peers exist, no active sync phase is reported, and disk/network counters do not move. Resource-limit states are exposed as failures for alerting but do not close benchmark runs as failed.
 
 Dynamic Rust worker profiles use `chain_validation_mode = "EveryBlock"` so benchmark nodes perform normal block validation. The static gateway profile remains lightweight with validation disabled.
 
