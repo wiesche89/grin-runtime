@@ -7,6 +7,8 @@ from . import storage
 
 DEFAULT_FAILURE_CONFIRMATION_OBSERVATIONS = 3
 DEFAULT_STUCK_CONFIRMATION_OBSERVATIONS = 12
+DEFAULT_CPU_LIMIT_CORE_PERCENT = 900.0
+DEFAULT_RAM_LIMIT_BYTES = 14 * 1024 * 1024 * 1024
 SYNC_ACTIVE_STATES = {
     "awaiting_peers",
     "header_sync",
@@ -39,9 +41,9 @@ def evaluate_node(node: dict, observations: list[dict] | None = None) -> str:
         return "peerless"
     if stuck_failure_confirmed(observations):
         return "stuck"
-    if latest.get("cpu_percent") is not None and float(latest["cpu_percent"]) > 95:
+    if latest.get("cpu_percent") is not None and float(latest["cpu_percent"]) > cpu_limit_core_percent():
         return "resource_limit"
-    if latest.get("ram_bytes") is not None and int(latest["ram_bytes"]) > 14 * 1024 * 1024 * 1024:
+    if latest.get("ram_bytes") is not None and int(latest["ram_bytes"]) > ram_limit_bytes():
         return "resource_limit"
     return "ok"
 
@@ -119,6 +121,24 @@ def stuck_confirmation_observations() -> int:
     except ValueError:
         return DEFAULT_STUCK_CONFIRMATION_OBSERVATIONS
     return max(failure_confirmation_observations(), value)
+
+
+def cpu_limit_core_percent() -> float:
+    raw_value = os.environ.get("RUNTIME_CONTAINER_CPU_LIMIT_CORE_PERCENT", str(DEFAULT_CPU_LIMIT_CORE_PERCENT))
+    try:
+        value = float(raw_value)
+    except ValueError:
+        return DEFAULT_CPU_LIMIT_CORE_PERCENT
+    return max(100.0, value)
+
+
+def ram_limit_bytes() -> int:
+    raw_value = os.environ.get("RUNTIME_CONTAINER_RAM_LIMIT_BYTES", str(DEFAULT_RAM_LIMIT_BYTES))
+    try:
+        value = int(raw_value)
+    except ValueError:
+        return DEFAULT_RAM_LIMIT_BYTES
+    return max(1024 * 1024 * 1024, value)
 
 
 def observations_for_sync_run(observations: list[dict], sync_run_id: str | None) -> list[dict]:

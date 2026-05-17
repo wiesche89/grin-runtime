@@ -41,6 +41,23 @@ def test_resource_limit_does_not_close_benchmark_as_failed():
     assert not failure_detector.benchmark_failure_confirmed("resource_limit", observations)
 
 
+def test_failure_detector_allows_multi_core_container_cpu_by_default():
+    node = {"node_id": "node-1", "status": "running"}
+    observations = [
+        {
+            "container_running": 1,
+            "api_up": 1,
+            "peer_count": 2,
+            "height": 100,
+            "header_height": 100,
+            "cpu_percent": 650,
+            "ram_bytes": 1024,
+        }
+    ]
+
+    assert failure_detector.evaluate_node(node, observations) == "ok"
+
+
 def test_active_sync_states_are_not_stuck_even_when_height_is_constant(monkeypatch):
     monkeypatch.setattr(failure_detector, "stuck_confirmation_observations", lambda: 3)
     observations = [

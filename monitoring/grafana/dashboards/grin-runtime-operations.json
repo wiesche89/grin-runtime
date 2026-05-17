@@ -60,9 +60,10 @@
     },
     {
       "type": "timeseries",
-      "title": "Container CPU",
+      "title": "Container CPU Core Usage",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
       "targets": [{ "expr": "max by (node_name) (grin_runtime_node_observation{metric=\"cpu_percent\"})", "legendFormat": "{{node_name}}", "refId": "A" }],
+      "description": "Docker reports container CPU as core percent: 100% equals one fully used vCPU. On a 10 vCPU VM, 600% is about 6 vCPU or 60% of the VM.",
       "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
       "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }
     },
