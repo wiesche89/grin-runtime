@@ -8,6 +8,7 @@ from .runtime_probe import collect_node_observation, rpc
 
 
 DEFAULT_SYNC_COMPLETE_LAG = 2
+DEFAULT_COMPLETION_OBSERVATIONS = 3
 
 
 def should_reset_after_sync(node: dict, latest_sync_state: str, observation: dict | None = None) -> bool:
@@ -29,13 +30,11 @@ def is_sync_complete(node: dict, latest_sync_state: str, observation: dict) -> b
         return False
     if (observation.get("peer_count") or 0) <= 0:
         return False
-    height = observation.get("height")
+    sync_run_id = node.get("sync_run_id")
     gw_height = gateway_height()
-    if height is None or gw_height is None or gw_height <= 0:
+    if not sync_run_id or gw_height is None or gw_height <= 0:
         return False
-    lag = abs(int(gw_height) - int(height))
-    allowed_lag = sync_complete_lag()
-    if lag > allowed_lag:
+    if not recent_heights_match_gateway(node, sync_run_id, gw_height):
         return False
     return chain_validation_passed(node)
 
@@ -59,6 +58,36 @@ def sync_complete_lag() -> int:
     if value < 0:
         return DEFAULT_SYNC_COMPLETE_LAG
     return value
+
+
+def completion_observations() -> int:
+    raw_value = os.environ.get("RUNTIME_SYNC_COMPLETE_OBSERVATIONS", str(DEFAULT_COMPLETION_OBSERVATIONS))
+    try:
+        value = int(raw_value)
+    except ValueError:
+        return DEFAULT_COMPLETION_OBSERVATIONS
+    return max(1, value)
+
+
+def recent_heights_match_gateway(node: dict, sync_run_id: str, gw_height: int) -> bool:
+    required = completion_observations()
+    scan_limit = max(required * 4, required)
+    observations = [
+        item
+        for item in storage.recent_observations(node["node_id"], scan_limit)
+        if item.get("sync_run_id") == sync_run_id
+    ][:required]
+    if len(observations) < required:
+        return False
+    allowed_lag = sync_complete_lag()
+    for item in observations:
+        if not item.get("api_up") or not item.get("container_running"):
+            return False
+        if (item.get("peer_count") or 0) <= 0 or item.get("height") is None:
+            return False
+        if abs(int(gw_height) - int(item["height"])) > allowed_lag:
+            return False
+    return True
 
 
 def set_autosync(node_id: str, enabled: bool) -> dict:

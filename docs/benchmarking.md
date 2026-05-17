@@ -9,7 +9,7 @@ Because Grin can expose `tip.height` near the network height before local block 
 
 Completion default:
 
-- Worker height must be within `RUNTIME_SYNC_COMPLETE_LAG=2` blocks of `grin-gw`.
+- The latest `RUNTIME_SYNC_COMPLETE_OBSERVATIONS=3` worker observations for the same `sync_run_id` must be within `RUNTIME_SYNC_COMPLETE_LAG=2` blocks of `grin-gw`.
 - `validate_chain` must succeed via the node owner API. This prevents a run from finishing when the API height is near the gateway but local chain validation is still incomplete.
 
 Failed benchmark completion is also guarded against startup transients. API/container/peer failures must be confirmed across `RUNTIME_BENCHMARK_FAILURE_OBSERVATIONS=3` recent observations before a running benchmark is marked failed.
