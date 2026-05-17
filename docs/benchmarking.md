@@ -11,6 +11,8 @@ Completion default:
 
 - Worker height must be within `RUNTIME_SYNC_COMPLETE_LAG=2` blocks of `grin-gw`.
 
+Failed benchmark completion is also guarded against startup transients. API/container/peer failures must be confirmed across `RUNTIME_BENCHMARK_FAILURE_OBSERVATIONS=3` recent observations before a running benchmark is marked failed.
+
 Phase durations are derived from observed sync-state transitions where the node exposes them:
 
 - `header_sync_duration` from `header_sync`

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import os
+
 from . import storage
+
+
+DEFAULT_FAILURE_CONFIRMATION_OBSERVATIONS = 3
 
 
 def evaluate_node(node: dict, observations: list[dict] | None = None) -> str:
@@ -29,13 +34,39 @@ def evaluate_node(node: dict, observations: list[dict] | None = None) -> str:
     return "ok"
 
 
+def benchmark_failure_confirmed(state: str, observations: list[dict]) -> bool:
+    if state in ("ok", "unknown"):
+        return False
+    required = failure_confirmation_observations()
+    if len(observations) < required:
+        return False
+    recent = observations[:required]
+    if state == "api_unreachable":
+        return all(item.get("container_running") and not item.get("api_up") for item in recent)
+    if state == "container_stopped":
+        return all(not item.get("container_running") for item in recent)
+    if state == "peerless":
+        return all(item.get("container_running") and item.get("api_up") and (item.get("peer_count") or 0) == 0 for item in recent)
+    return True
+
+
+def failure_confirmation_observations() -> int:
+    raw_value = os.environ.get("RUNTIME_BENCHMARK_FAILURE_OBSERVATIONS", str(DEFAULT_FAILURE_CONFIRMATION_OBSERVATIONS))
+    try:
+        value = int(raw_value)
+    except ValueError:
+        return DEFAULT_FAILURE_CONFIRMATION_OBSERVATIONS
+    return max(1, value)
+
+
 def run_once() -> None:
     for node in storage.list_nodes():
-        state = evaluate_node(node, storage.recent_observations(node["node_id"], 6))
+        observations = storage.recent_observations(node["node_id"], 6)
+        state = evaluate_node(node, observations)
         if node.get("failure_state") != state:
             storage.update_node(node["node_id"], failure_state=state)
         run = storage.get_benchmark_run(node["node_id"], node["sync_run_id"]) if node.get("sync_run_id") else None
-        if state not in ("ok", "unknown") and run and run.get("result") == "running" and node.get("node_type") != "gateway":
+        if benchmark_failure_confirmed(state, observations) and run and run.get("result") == "running" and node.get("node_type") != "gateway":
             latest = storage.latest_observation(node["node_id"]) or {}
             storage.complete_benchmark_run(
                 node,

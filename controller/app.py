@@ -183,7 +183,7 @@ async function nodeAction(nodeId, action) {
   try {
     if (action === "delete") {
       if (!confirm(`Delete ${nodeId}?`)) return;
-      await api(`/api/nodes/${nodeId}`, {method: "DELETE"});
+      await api(`/api/nodes/${nodeId}?remove_files=true`, {method: "DELETE"});
       msg(`Deleted ${nodeId}.`);
     } else {
       await api(`/api/nodes/${nodeId}/${action}`, {method: "POST"});

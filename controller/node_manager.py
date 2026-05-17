@@ -211,13 +211,15 @@ def reset_chain(node_id: str, *, dry_run: bool = False) -> dict:
     node_path = ensure_child_path(NODES_DIR, NODES_DIR / Path(node["node_path"]).name)
     run_command(compose_args("stop", node["container_name"]), dry_run=dry_run)
     if node["node_type"] == "grinpp":
-        targets = [node_path / "FLOONET" / "NODE", node_path / "FLOONET" / "LOGS" / "Node.log"]
+        targets = [node_path / "FLOONET"]
     else:
         targets = [node_path / "chain_data", node_path / "grin-server.log"]
     if not dry_run:
         for target in targets:
             ensure_child_path(node_path, target)
             remove_path(target)
+        if node["node_type"] == "grinpp":
+            config_generator.generate_grinpp_config(node_id, node["profile"])
     run_command(compose_args("up", "-d", node["container_name"]), dry_run=dry_run)
     storage.log_action("reset-chain", node_id)
     sync_run_id = f"sync-{uuid.uuid4().hex[:12]}"
@@ -232,6 +234,7 @@ def delete_node(node_id: str, *, remove_files: bool = False, dry_run: bool = Fal
     if node["node_type"] == "gateway":
         raise HTTPException(status_code=400, detail="gateway cannot be deleted")
     run_command(compose_args("stop", node["container_name"]), dry_run=dry_run)
+    run_command(compose_args("rm", "-f", node["container_name"]), dry_run=dry_run)
     storage.delete_node(node_id)
     storage.log_action("delete", node_id)
     refresh_generated_files()

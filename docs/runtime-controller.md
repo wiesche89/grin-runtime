@@ -25,3 +25,5 @@ Implemented lifecycle endpoints:
 - `POST /api/nodes/{node_id}/stop`
 - `POST /api/nodes/{node_id}/restart`
 - `POST /api/nodes/{node_id}/reset-chain`
+
+`DELETE /api/nodes/{node_id}?remove_files=true` stops and removes the worker container, removes the worker directory under `nodes/`, and regenerates dynamic compose/monitoring files. The Grafana control UI uses this mode for dynamic worker nodes so old chain data does not leak into recreated benchmark runs.
