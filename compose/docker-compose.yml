@@ -40,6 +40,7 @@ services:
       RUNTIME_COMPOSE_COMMAND: docker compose
       RUNTIME_DB_PATH: /runtime/controller/runtime.db
       RUNTIME_CONTROLLER_TOKEN: ${RUNTIME_CONTROLLER_TOKEN:-}
+      RUNTIME_SCHEDULER_INTERVAL: "10"
       GRIN_RUST_IMAGE: grin-runtime
       GRIN_RUST_TAG: staging
       GRINPP_IMAGE: grin-runtime-grinpp

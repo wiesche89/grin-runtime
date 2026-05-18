@@ -9,15 +9,16 @@ from .utils import NODES_DIR, sha256_text, write_json_if_changed, write_text_if_
 
 PROFILES = {
     "gateway": {"peer_max_outbound_count": 12, "peer_min_preferred_outbound_count": 8, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "Disabled"},
-    "default": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
-    "low-memory": {"peer_max_outbound_count": 4, "peer_min_preferred_outbound_count": 1, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
-    "high-peers": {"peer_max_outbound_count": 16, "peer_min_preferred_outbound_count": 6, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
-    "pihd-test": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": True, "chain_validation_mode": "EveryBlock"},
-    "pibd-test": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": True, "chain_validation_mode": "EveryBlock"},
-    "archive": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": True, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
-    "pruned": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
-    "benchmark": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": True, "chain_validation_mode": "EveryBlock"},
-    "grinpp-compat": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
+    "default": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "Disabled"},
+    "low-memory": {"peer_max_outbound_count": 4, "peer_min_preferred_outbound_count": 1, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "Disabled"},
+    "high-peers": {"peer_max_outbound_count": 16, "peer_min_preferred_outbound_count": 6, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "Disabled"},
+    "pihd-test": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": True, "chain_validation_mode": "Disabled"},
+    "pibd-test": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": True, "chain_validation_mode": "Disabled"},
+    "archive": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": True, "autosync_default": False, "chain_validation_mode": "Disabled"},
+    "pruned": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "Disabled"},
+    "benchmark": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": True, "chain_validation_mode": "Disabled"},
+    "grinpp-compat": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "Disabled"},
+    "validated": {"peer_max_outbound_count": 8, "peer_min_preferred_outbound_count": 2, "archive_mode": False, "autosync_default": False, "chain_validation_mode": "EveryBlock"},
 }
 
 

@@ -17,7 +17,8 @@ from .security import require_write_token, validate_node_id, write_auth_required
 async def lifespan(app: FastAPI):
     storage.init_db()
     node_manager.refresh_generated_files()
-    scheduler.start_background_scheduler(int(os.environ.get("RUNTIME_SCHEDULER_INTERVAL", "30")))
+    interval = int(os.environ.get("RUNTIME_SCHEDULER_INTERVAL", str(scheduler.DEFAULT_INTERVAL_SECS)))
+    scheduler.start_background_scheduler(interval)
     yield
 
 
@@ -76,6 +77,7 @@ def control_ui() -> str:
       <option value="archive">archive</option>
       <option value="pruned">pruned</option>
       <option value="grinpp-compat">grinpp-compat</option>
+      <option value="validated">validated</option>
     </select>
     <button class="good" onclick="createNode()">Add Node</button>
     <button onclick="loadNodes()">Refresh</button>
