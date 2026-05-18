@@ -40,6 +40,8 @@ def is_sync_complete(node: dict, latest_sync_state: str, observation: dict) -> b
 
 
 def chain_validation_passed(node: dict) -> bool:
+    if node.get("node_type") == "grinpp":
+        return True
     if os.environ.get("RUNTIME_REQUIRE_VALIDATE_CHAIN", "true").lower() in ("0", "false", "no"):
         return True
     try:
@@ -110,8 +112,9 @@ def observe_node(node: dict) -> dict:
 
 
 def handle_sync_completion(node: dict, observation: dict) -> None:
+    if node.get("last_sync_completed_at"):
+        return
     latest_state = observation.get("sync_state") or "unknown"
-    previous_state = node.get("sync_state") or "unknown"
     height = observation.get("height")
     sync_run_id = node.get("sync_run_id")
     completed = is_sync_complete(node, latest_state, observation) and bool(sync_run_id)
