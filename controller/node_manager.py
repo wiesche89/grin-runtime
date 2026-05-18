@@ -21,6 +21,15 @@ GRINPP_TAG = os.environ.get("GRINPP_TAG", "master")
 
 def refresh_generated_files() -> None:
     nodes = storage.list_nodes()
+    for node in nodes:
+        if node["node_type"] == "grin-rust":
+            _node_dir, config_hash = config_generator.generate_rust_config(node["node_id"], node["profile"])
+            if node.get("runtime_config_hash") != config_hash:
+                storage.update_node(node["node_id"], runtime_config_hash=config_hash)
+        elif node["node_type"] == "grinpp":
+            _node_dir, config_hash = config_generator.generate_grinpp_config(node["node_id"], node["profile"])
+            if node.get("runtime_config_hash") != config_hash:
+                storage.update_node(node["node_id"], runtime_config_hash=config_hash)
     compose_generator.generate(nodes)
     monitoring_generator.generate(nodes)
 

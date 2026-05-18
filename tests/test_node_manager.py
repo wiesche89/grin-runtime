@@ -1,6 +1,36 @@
 from controller import node_manager
 
 
+def test_refresh_generated_files_regenerates_existing_rust_configs(monkeypatch):
+    nodes = [
+        {
+            "node_id": "node-5",
+            "node_name": "node-5",
+            "node_type": "grin-rust",
+            "profile": "default",
+            "status": "running",
+            "runtime_config_hash": "old",
+        }
+    ]
+    captured = {}
+
+    monkeypatch.setattr(node_manager.storage, "list_nodes", lambda: nodes)
+    monkeypatch.setattr(
+        node_manager.config_generator,
+        "generate_rust_config",
+        lambda node_id, profile: (None, "new"),
+    )
+    monkeypatch.setattr(node_manager.compose_generator, "generate", lambda items: captured.setdefault("compose", items))
+    monkeypatch.setattr(node_manager.monitoring_generator, "generate", lambda items: captured.setdefault("monitoring", items))
+    monkeypatch.setattr(node_manager.storage, "update_node", lambda node_id, **kwargs: captured.setdefault("update", (node_id, kwargs)))
+
+    node_manager.refresh_generated_files()
+
+    assert captured["update"] == ("node-5", {"runtime_config_hash": "new"})
+    assert captured["compose"] == nodes
+    assert captured["monitoring"] == nodes
+
+
 def test_next_node_number_considers_existing_node_directories(tmp_path, monkeypatch):
     nodes_dir = tmp_path / "nodes"
     nodes_dir.mkdir()
