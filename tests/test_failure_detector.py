@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from controller import failure_detector
 
 
@@ -10,6 +12,42 @@ def test_benchmark_failure_requires_confirmed_api_unreachable_observations():
         {"container_running": 1, "api_up": 0},
         {"container_running": 1, "api_up": 0},
     ])
+
+
+def test_benchmark_failure_uses_startup_grace_period(monkeypatch):
+    monkeypatch.setattr(failure_detector, "failure_grace_seconds", lambda: 180)
+    run = {"sync_started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat()}
+    observations = [
+        {"container_running": 1, "api_up": 1, "peer_count": 0},
+        {"container_running": 1, "api_up": 1, "peer_count": 0},
+        {"container_running": 1, "api_up": 1, "peer_count": 0},
+    ]
+
+    assert not failure_detector.benchmark_failure_confirmed("peerless", observations, run)
+
+
+def test_benchmark_failure_after_grace_period(monkeypatch):
+    monkeypatch.setattr(failure_detector, "failure_grace_seconds", lambda: 180)
+    run = {"sync_started_at": (datetime.now(timezone.utc) - timedelta(seconds=181)).replace(microsecond=0).isoformat()}
+    observations = [
+        {"container_running": 1, "api_up": 1, "peer_count": 0},
+        {"container_running": 1, "api_up": 1, "peer_count": 0},
+        {"container_running": 1, "api_up": 1, "peer_count": 0},
+    ]
+
+    assert failure_detector.benchmark_failure_confirmed("peerless", observations, run)
+
+
+def test_peerless_benchmark_failure_ignores_active_sync_activity(monkeypatch):
+    monkeypatch.setattr(failure_detector, "failure_grace_seconds", lambda: 0)
+    run = {"sync_started_at": (datetime.now(timezone.utc) - timedelta(seconds=300)).replace(microsecond=0).isoformat()}
+    observations = [
+        {"container_running": 1, "api_up": 1, "peer_count": 0, "sync_state": "txhashsetpibd_download"},
+        {"container_running": 1, "api_up": 1, "peer_count": 0, "sync_state": "txhashset_setup"},
+        {"container_running": 1, "api_up": 1, "peer_count": 0, "sync_state": "unknown"},
+    ]
+
+    assert not failure_detector.benchmark_failure_confirmed("peerless", observations, run)
 
 
 def test_benchmark_failure_rejects_transient_startup_api_state():

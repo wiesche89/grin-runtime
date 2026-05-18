@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timezone
 
 from . import storage
 
 
 DEFAULT_FAILURE_CONFIRMATION_OBSERVATIONS = 3
+DEFAULT_FAILURE_GRACE_SECONDS = 180
 DEFAULT_STUCK_CONFIRMATION_OBSERVATIONS = 12
 DEFAULT_CPU_LIMIT_CORE_PERCENT = 900.0
 DEFAULT_RAM_LIMIT_BYTES = 14 * 1024 * 1024 * 1024
@@ -48,8 +50,10 @@ def evaluate_node(node: dict, observations: list[dict] | None = None) -> str:
     return "ok"
 
 
-def benchmark_failure_confirmed(state: str, observations: list[dict]) -> bool:
+def benchmark_failure_confirmed(state: str, observations: list[dict], run: dict | None = None) -> bool:
     if state in ("ok", "unknown"):
+        return False
+    if run and benchmark_run_age_seconds(run) < failure_grace_seconds():
         return False
     required = failure_confirmation_observations()
     if len(observations) < required:
@@ -60,6 +64,8 @@ def benchmark_failure_confirmed(state: str, observations: list[dict]) -> bool:
     if state == "container_stopped":
         return all(not item.get("container_running") for item in recent)
     if state == "peerless":
+        if observed_activity(observations):
+            return False
         return all(item.get("container_running") and item.get("api_up") and (item.get("peer_count") or 0) == 0 for item in recent)
     if state == "stuck":
         return stuck_failure_confirmed(observations)
@@ -114,6 +120,28 @@ def failure_confirmation_observations() -> int:
     return max(1, value)
 
 
+def failure_grace_seconds() -> int:
+    raw_value = os.environ.get("RUNTIME_BENCHMARK_FAILURE_GRACE_SECONDS", str(DEFAULT_FAILURE_GRACE_SECONDS))
+    try:
+        value = int(raw_value)
+    except ValueError:
+        return DEFAULT_FAILURE_GRACE_SECONDS
+    return max(0, value)
+
+
+def benchmark_run_age_seconds(run: dict) -> float:
+    started_at = run.get("sync_started_at")
+    if not started_at:
+        return 0.0
+    try:
+        started = datetime.fromisoformat(started_at)
+    except ValueError:
+        return 0.0
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=timezone.utc)
+    return max(0.0, (datetime.now(timezone.utc) - started).total_seconds())
+
+
 def stuck_confirmation_observations() -> int:
     raw_value = os.environ.get("RUNTIME_STUCK_FAILURE_OBSERVATIONS", str(DEFAULT_STUCK_CONFIRMATION_OBSERVATIONS))
     try:
@@ -156,7 +184,7 @@ def run_once() -> None:
         run = storage.get_benchmark_run(node["node_id"], node["sync_run_id"]) if node.get("sync_run_id") else None
         run_observations = observations_for_sync_run(observations, node.get("sync_run_id"))
         benchmark_state = evaluate_node(node, run_observations) if run_observations else "unknown"
-        if benchmark_failure_confirmed(benchmark_state, run_observations) and run and run.get("result") == "running" and node.get("node_type") != "gateway":
+        if benchmark_failure_confirmed(benchmark_state, run_observations, run) and run and run.get("result") == "running" and node.get("node_type") != "gateway":
             latest = run_observations[0] if run_observations else storage.latest_observation(node["node_id"]) or {}
             storage.complete_benchmark_run(
                 node,
